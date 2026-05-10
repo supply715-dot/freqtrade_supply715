@@ -1,0 +1,79 @@
+//@version=5
+strategy("Freqtrade SampleStrategy Clone", overlay=true, initial_capital=1000, default_qty_type=strategy.cash, default_qty_value=100)
+
+// --- 인풋 설정 (Freqtrade 파라미터와 동일) ---
+buy_rsi_level  = input.int(30, "Buy RSI Level", minval=1, maxval=50)
+sell_rsi_level = input.int(70, "Sell RSI Level", minval=50, maxval=100)
+tema_period    = input.int(9, "TEMA Period")
+bb_period      = input.int(20, "Bollinger Period")
+bb_std         = input.float(2.0, "Bollinger StdDev")
+stoploss_pct   = input.float(10.0, "Stoploss %") / 100
+
+// --- 지표 계산 ---
+// 1. RSI
+rsi_val = ta.rsi(close, 14)
+
+// 2. TEMA (Triple Exponential Moving Average)
+ema1 = ta.ema(close, tema_period)
+ema2 = ta.ema(ema1, tema_period)
+ema3 = ta.ema(ema2, tema_period)
+tema = 3 * (ema1 - ema2) + ema3
+
+// 3. Bollinger Bands
+[bb_middle, bb_upper, bb_lower] = ta.bb(close, bb_period, bb_std)
+
+// --- 매수/매도 조건 정의 ---
+
+// 매수 조건: 
+// 1. RSI가 Buy Level(30)을 상향 돌파
+// 2. TEMA가 볼린저 밴드 중단선 이하
+// 3. TEMA가 상승 중 (현재 값이 이전 값보다 큼)
+buy_condition = ta.crossed_above(rsi_val, buy_rsi_level) and tema <= bb_middle and tema > tema[1]
+
+// 매도 조건:
+// 1. RSI가 Sell Level(70)을 상향 돌파
+// 2. TEMA가 볼린저 밴드 중단선 이상
+// 3. TEMA가 하락 중 (현재 값이 이전 값보다 작음)
+sell_condition = ta.crossed_above(rsi_val, sell_rsi_level) and tema > bb_middle and tema < tema[1]
+
+// --- 전략 실행 ---
+
+// 매수 진입
+if (buy_condition)
+    strategy.entry("Long", strategy.long)
+
+// 매도 청산 (전략 신호에 의한 청산)
+if (sell_condition)
+    strategy.close("Long", comment="Exit Signal")
+
+// --- ROI 및 손절 설정 ---
+
+// 손절 (Stoploss) - 설정된 퍼센트 하락 시 강제 청산
+strategy.exit("Stoploss", "Long", stop=strategy.position_avg_price * (1 - stoploss_pct))
+
+// ROI (Freqtrade의 minimal_roi 시뮬레이션)
+// 0분: 4%, 30분(5분봉 기준 6봉): 2%, 60분(5분봉 기준 12봉): 1% 수익 시 익절
+if strategy.position_size > 0
+    float profit_pct = (close - strategy.position_avg_price) / strategy.position_avg_price
+    int bars_held = ta.barssince(buy_condition)
+    
+    bool roi_exit = false
+    if profit_pct >= 0.04
+        roi_exit := true
+    else if bars_held >= 6 and profit_pct >= 0.02
+        roi_exit := true
+    else if bars_held >= 12 and profit_pct >= 0.01
+        roi_exit := true
+    
+    if roi_exit
+        strategy.close("Long", comment="ROI Exit")
+
+// --- 차트 시각화 ---
+plot(tema, color=color.blue, title="TEMA")
+plot(bb_middle, color=color.gray, title="BB Middle")
+plot(bb_upper, color=color.new(color.red, 80), title="BB Upper")
+plot(bb_lower, color=color.new(color.green, 80), title="BB Lower")
+
+// 매수/매도 시그널 차트 표시
+plotshape(buy_condition, style=shape.triangleup, location=location.belowbar, color=color.green, size=size.small, title="Buy Signal", text="BUY")
+plotshape(sell_condition, style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, title="Sell Signal", text="SELL")

@@ -6,25 +6,30 @@
         "backtest_period_days": 7,
         "identifier": "macro_regime_v1",
         "feature_parameters": {
-            "include_timeframes": ["5m"],
+            "include_timeframes": ["5m", "1h"],
             "include_corr_pairlist": [],
             "label_period_candles": 15,
-            "indicator_periods_candles": [5, 14, 20],
-            "include_shifted_candles": 0,
+            "indicator_periods_candles": [9, 20, 50],
+            "include_shifted_candles": 1,
+            "DI_threshold": 0.9,
+            "weight_factor": 0.7,
             "principal_component_analysis": false,
-            "shuffle_after_split": false,
-            "weight_factor": 0
+            "use_SVM_to_remove_outliers": true,
+            "shuffle_after_split": true
         },
         "data_split_parameters": {
-            "test_size": 0.15,
-            "shuffle": false,
+            "test_size": 0.2,
             "random_state": 42
         },
         "model_training_parameters": {
-            "n_estimators": 200,
-            "learning_rate": 0.05,
-            "num_leaves": 31,
-            "min_child_samples": 20
+            "n_estimators": 500,
+            "learning_rate": 0.03,
+            "num_leaves": 63,
+            "max_depth": -1,
+            "min_child_samples": 20,
+            "subsample": 0.8,
+            "colsample_bytree": 0.8,
+            "n_jobs": -1
         }
     }
 }

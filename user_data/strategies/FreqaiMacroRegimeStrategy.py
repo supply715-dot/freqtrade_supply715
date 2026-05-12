@@ -8,132 +8,142 @@ from pandas import DataFrame
 import talib.abstract as ta
 
 from freqtrade.persistence import Trade
-from freqtrade.strategy import IStrategy, stoploss_from_open
+from freqtrade.strategy import IStrategy
 
 logger = logging.getLogger(__name__)
 
-
 class FreqaiMacroRegimeStrategy(IStrategy):
     """
-    Pine Script (Macro Regime Engine V18.4) -> FreqAI 변환 v2
-    
-    [v2 개선사항]
-    - AI 진입 임계값 상향: 0.008 → 0.015 (확신 높을 때만 진입)
-    - trailing_stop 비활성화 → custom_stoploss 단독 작동 명확화
-    - Long/Short 양방향 진입 활성화 (can_short=True)
-    - AI 진입 확신도 필터 강화 (롱은 +1.5%, 숏은 -1.5%)
-    - custom_stoploss가 기본 stoploss보다 우선 작동하도록 정리
+    [v21] 1h FreqAI DCA Swing Bot
+    1시간봉 스윙 + 5배 레버리지 + -10% 하드손절 + 마팅게일 DCA
     """
-
-    # ─── 기본 설정 ─────────────────────────────────────────
-    timeframe = "5m"
+    INTERFACE_VERSION = 3
+    timeframe = "1h" # 5분봉에서 1시간봉으로 상향 (노이즈 제거)
     startup_candle_count: int = 200
 
-    # [v12] 목표 달성을 위한 기계적 손익비(1:1) 스캘핑 
-    # 승률이 50% 이상만 나오면 무조건 누적 수익이 발생하는 구조
-    minimal_roi = {
-        "0": 0.01   # 1% 고정 익절
-    }
-
-    # 고정 손절 (1:1 비율)
-    stoploss = -0.01
-    trailing_stop = False
-    use_custom_stoploss = False  # 버그를 유발하던 커스텀 손절 제거
+    can_short = True 
+    minimal_roi = {"0": 100}
     
-    can_short = False
+    # [핵심] 가장 성과가 좋았던 -10% 타이트한 하드 손절 유지
+    stoploss = -0.10 
 
-    # ─── 타임프레임 설정 ───────────────────────────────────
+    # 트레일링 스탑: 1시간봉 스윙이므로 익절 목표를 상향 (3% 상승 시 활성화)
+    trailing_stop = True
+    trailing_stop_positive_offset = 0.030  # 3.0% 상승 시 활성화 (5배 레버리지 = 15% 수익)
+    trailing_stop_positive = 0.005         # 고점 대비 0.5% 하락 시 익절
+    trailing_only_offset_is_reached = True
+
+    use_custom_stoploss = False
+    
+    position_adjustment_enable = True
+    max_entry_position_adjustment = 3
+
+    def leverage(self, pair: str, current_time: datetime, current_rate: float,
+                 proposed_leverage: float, max_leverage: float, entry_tag: Optional[str],
+                 side: str, **kwargs) -> float:
+        return 5.0
+
+    def custom_stake_amount(self, pair: str, current_time: datetime, current_rate: float,
+                            proposed_stake: float, min_stake: Optional[float], max_stake: float,
+                            leverage: float, entry_tag: Optional[str], side: str,
+                            **kwargs) -> float:
+        # 배수 물타기를 위해 초기 진입은 시드의 10%로 제한
+        return proposed_stake * 0.10
 
     def informative_pairs(self):
         pairs = self.dp.current_whitelist()
-        return [(pair, '1h') for pair in pairs]
-
-    # ─── FreqAI Feature Engineering ─────────────────────────
+        return [(pair, '4h') for pair in pairs]
 
     def feature_engineering_expand_all(
         self, dataframe: DataFrame, period: int, metadata: Dict[str, Any], **kwargs
     ) -> DataFrame:
-        dataframe[f'%-tema_{period}'] = ta.TEMA(dataframe, timeperiod=period)
-        bb = ta.BBANDS(dataframe, timeperiod=period)
-        dataframe[f'%-bb_width_{period}'] = (bb['upperband'] - bb['lowerband']) / bb['middleband'].replace(0, np.nan)
         dataframe[f'%-rsi_{period}'] = ta.RSI(dataframe, timeperiod=period)
-        
-        macd = ta.MACD(dataframe)
-        dataframe[f'%-macdhist_{period}'] = macd['macdhist']
+        dataframe[f'%-tema_{period}'] = ta.TEMA(dataframe, timeperiod=period)
+        dataframe[f'%-adx_{period}'] = ta.ADX(dataframe, timeperiod=period)
+        dataframe[f'%-roc_{period}'] = ta.ROC(dataframe, timeperiod=period)
         return dataframe
 
     def feature_engineering_expand_basic(
         self, dataframe: DataFrame, metadata: Dict[str, Any], **kwargs
     ) -> DataFrame:
-        dataframe['rsi_val'] = ta.RSI(dataframe, timeperiod=14)
+        dataframe['%-ema_20'] = ta.EMA(dataframe, timeperiod=20)
         dataframe['%-ema_50'] = ta.EMA(dataframe, timeperiod=50)
+        dataframe['%-ema_100'] = ta.EMA(dataframe, timeperiod=100)
         return dataframe
 
     def feature_engineering_standard(
         self, dataframe: DataFrame, metadata: Dict[str, Any], **kwargs
     ) -> DataFrame:
         dataframe["%-hour_of_day"] = dataframe["date"].dt.hour
+        dataframe["%-day_of_week"] = dataframe["date"].dt.dayofweek
         return dataframe
 
     def set_freqai_targets(
         self, dataframe: DataFrame, metadata: Dict[str, Any], **kwargs
     ) -> DataFrame:
-        # 15봉(75분) 뒤의 파동 타겟 (1% 익절 목표이므로 짧게)
+        # 1시간봉에서 10캔들 = 10시간 뒤의 가격 예측 (진정한 스윙)
         target = (
-            (dataframe["close"].shift(-15) - dataframe["close"])
+            (dataframe["close"].shift(-10) - dataframe["close"])
             / dataframe["close"]
         )
-        dataframe["&-future_roi_15"] = target.ffill()
+        dataframe["&-future_roi_10"] = target.ffill()
         return dataframe
-
-    # ─── 지표 계산 (FreqAI 트리거) ──────────────────────────
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe['ema_50'] = ta.EMA(dataframe, timeperiod=50)
+        dataframe['ema_100'] = ta.EMA(dataframe, timeperiod=100)
         dataframe['rsi_14'] = ta.RSI(dataframe, timeperiod=14)
-        macd = ta.MACD(dataframe)
-        dataframe['macd_hist'] = macd['macdhist']
-        
-        # FreqAI 시작
         dataframe = self.freqai.start(dataframe, metadata, self)
         return dataframe
 
-    # ─── 진입 / 청산 조건 (기계적 매매) ───────────────────────
-
     def populate_entry_trend(self, df: DataFrame, metadata: dict) -> DataFrame:
-        """
-        [v12] 빈도수 극대화 및 기계적 진입
-        """
+        # Long: 1시간봉 기준 1% 이상 큰 상승이 예측될 때 진입
         enter_long = (
             (df["do_predict"] == 1) &
-            (df["&-future_roi_15"] > 0.003) &  # 타겟 임계값을 0.3%로 낮춰 빈도 폭발적 증가
-            (df['close'] > df['ema_50']) &     # 최소한의 추세 동행
-            (df['macd_hist'] > 0)
+            (df["&-future_roi_10"] > 0.01) & 
+            (df['rsi_14'] < 50) &             
+            (df['ema_50'] > df['ema_100'])
         )
-        df.loc[enter_long, ["enter_long", "enter_tag"]] = (1, "rr_long_v12")
+        df.loc[enter_long, ["enter_long", "enter_tag"]] = (1, "swing_long")
+
+        # Short: 1시간봉 기준 1% 이상 큰 하락이 예측될 때 진입
+        enter_short = (
+            (df["do_predict"] == 1) &
+            (df["&-future_roi_10"] < -0.01) & 
+            (df['rsi_14'] > 50) &             
+            (df['ema_50'] < df['ema_100'])
+        )
+        df.loc[enter_short, ["enter_short", "enter_tag"]] = (1, "swing_short")
+
         return df
 
     def populate_exit_trend(self, df: DataFrame, metadata: dict) -> DataFrame:
-        """청산은 전적으로 ROI 1%와 Stoploss -1%에 맡깁니다."""
         return df
 
-    # ─── 커스텀 손절 로직 (v9 노이즈 방어형) ──────────────────
+    def adjust_trade_position(self, trade: Trade, current_time: datetime,
+                              current_rate: float, current_profit: float,
+                              min_stake: Optional[float], max_stake: float,
+                              current_entry_rate: float, current_exit_rate: float,
+                              current_entry_profit: float, current_exit_profit: float,
+                              **kwargs) -> Optional[float]:
+        
+        if current_profit > -0.01:
+            return None
 
-    def custom_stoploss(self, pair: str, trade: Trade, current_time: datetime,
-                        current_rate: float, current_profit: float, **kwargs) -> float:
-        """
-        [v9] ATR 기반 동적 손절 - 배수 확장 (4 -> 6)
-        노이즈에 의한 조기 손절을 방지하여 승률을 높입니다.
-        """
-        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-        if dataframe.empty:
-            return -0.10
+        filled_entries = trade.select_filled_orders(trade.entry_side)
+        count_of_entries = len(filled_entries)
 
-        last_candle = dataframe.iloc[-1].squeeze()
+        # 1시간봉에 맞는 널널한 그리드 간격 (2%, 4%, 6%) 적용
+        # 1차 물타기: 가격이 -2.0% 하락 시
+        if count_of_entries == 1 and current_profit <= -0.020:
+            return trade.stake_amount 
 
-        if "stable_atr" in last_candle:
-            # 6배 ATR 손절 (노이즈 방어)
-            atr_stop = (6.0 * last_candle['stable_atr']) / current_rate
-            return max(-0.15, -atr_stop) # 최대 -15% 제한
+        # 2차 물타기: 가격이 -4.0% 하락 시
+        if count_of_entries == 2 and current_profit <= -0.040:
+            return trade.stake_amount 
 
-        return -0.10
+        # 3차 물타기: 가격이 -6.0% 하락 시 (-10% 손절까지 4%의 여유 방어막)
+        if count_of_entries == 3 and current_profit <= -0.060:
+            return trade.stake_amount 
+
+        return None

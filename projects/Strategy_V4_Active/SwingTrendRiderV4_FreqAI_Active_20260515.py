@@ -12,7 +12,6 @@ class SwingTrendRiderV4_FreqAI_Active_20260515(IStrategy):
     # 전략 설정
     can_short: bool = True
     timeframe = '4h'
-    startup_candle_count: int = 200
     
     # FreqAI 관련 설정
     process_only_new_candles = True

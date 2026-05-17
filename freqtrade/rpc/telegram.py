@@ -416,10 +416,10 @@ class Telegram(RPCHandler):
         emoji = "\N{CHECK MARK}" if is_fill else "\N{LARGE BLUE CIRCLE}"
 
         terminology = {
-            "1_enter": "New Trade",
-            "1_entered": "New Trade filled",
-            "x_enter": "Increasing position",
-            "x_entered": "Position increase filled",
+            "1_enter": "신규 포지션 진입 시도",
+            "1_entered": "신규 포지션 진입 완료",
+            "x_enter": "추가 포지션 진입 시도 (불타기)",
+            "x_entered": "추가 포지션 진입 완료 (불타기)",
         }
 
         key = f"{'x' if msg['sub_trade'] else '1'}_{'entered' if is_fill else 'enter'}"
@@ -428,25 +428,25 @@ class Telegram(RPCHandler):
         message = (
             f"{emoji} *{self._exchange_from_msg(msg)}:*"
             f" {wording} (#{msg['trade_id']})\n"
-            f"*Pair:* `{msg['pair']}`\n"
+            f"*코인 페어:* `{msg['pair']}`\n"
         )
         message += self._add_analyzed_candle(msg["pair"])
-        message += f"*Enter Tag:* `{msg['enter_tag']}`\n" if msg.get("enter_tag") else ""
-        message += f"*Amount:* `{round_value(msg['amount'], 8)}`\n"
-        message += f"*Direction:* `{msg['direction']}"
+        message += f"*진입 조건:* `{msg['enter_tag']}`\n" if msg.get("enter_tag") else ""
+        message += f"*진입 수량:* `{round_value(msg['amount'], 8)}`\n"
+        message += f"*거래 방향:* `{msg['direction']}"
         if msg.get("leverage") and msg.get("leverage", 1.0) != 1.0:
-            message += f" ({msg['leverage']:.3g}x)"
+            message += f" ({msg['leverage']:.3g}배)"
         message += "`\n"
-        message += f"*Open Rate:* `{fmt_coin2(msg['open_rate'], msg['quote_currency'])}`\n"
+        message += f"*진입 가격:* `{fmt_coin2(msg['open_rate'], msg['quote_currency'])}`\n"
         if msg["type"] == RPCMessageType.ENTRY and msg["current_rate"]:
             message += (
-                f"*Current Rate:* `{fmt_coin2(msg['current_rate'], msg['quote_currency'])}`\n"
+                f"*현재 가격:* `{fmt_coin2(msg['current_rate'], msg['quote_currency'])}`\n"
             )
 
         profit_fiat_extra = self.__format_profit_fiat(msg, "stake_amount")  # type: ignore
         total = fmt_coin(msg["stake_amount"], msg["quote_currency"])
 
-        message += f"*{'New ' if msg['sub_trade'] else ''}Total:* `{total}{profit_fiat_extra}`"
+        message += f"*총 투자금액:* `{total}{profit_fiat_extra}`"
 
         return message
 
@@ -457,7 +457,7 @@ class Telegram(RPCHandler):
         duration_min = duration.total_seconds() / 60
 
         leverage_text = (
-            f" ({msg['leverage']:.3g}x)"
+            f" ({msg['leverage']:.3g}배)"
             if msg.get("leverage") and msg.get("leverage", 1.0) != 1.0
             else ""
         )
@@ -473,56 +473,58 @@ class Telegram(RPCHandler):
         is_sub_trade = msg.get("sub_trade")
         is_sub_profit = msg["profit_amount"] != msg.get("cumulative_profit")
         is_final_exit = msg.get("is_final_exit", False) and is_sub_profit
-        profit_prefix = "Sub " if is_sub_trade else ""
+        profit_prefix = "분할 " if is_sub_trade else ""
         cp_extra = ""
-        exit_wording = "Exited" if is_fill else "Exiting"
+        exit_wording = "청산 완료" if is_fill else "청산 시도 중"
         if is_sub_trade or is_final_exit:
             cp_fiat = self.__format_profit_fiat(msg, "cumulative_profit")
 
             if is_final_exit:
-                profit_prefix = "Sub "
+                profit_prefix = "분할 "
                 cp_extra = (
-                    f"*Final Profit:* `{format_pct(msg['final_profit_ratio'])} "
+                    f"*최종 누적 수익:* `{format_pct(msg['final_profit_ratio'])} "
                     f"({fmt_coin(msg['cumulative_profit'], msg['stake_currency'])}{cp_fiat})`\n"
                 )
             else:
-                exit_wording = f"Partially {exit_wording.lower()}"
+                exit_wording = f"일부 {exit_wording}"
                 if msg["cumulative_profit"]:
                     cp_extra = (
-                        f"*Cumulative Profit:* `"
+                        f"*현재 누적 수익:* `"
                         f"{fmt_coin(msg['cumulative_profit'], msg['stake_currency'])}{cp_fiat}`\n"
                     )
-        enter_tag = f"*Enter Tag:* `{msg['enter_tag']}`\n" if msg.get("enter_tag") else ""
+        enter_tag = f"*진입 조건:* `{msg['enter_tag']}`\n" if msg.get("enter_tag") else ""
         message = (
             f"{self._get_exit_emoji(msg)} *{self._exchange_from_msg(msg)}:* "
-            f"{exit_wording} {msg['pair']} (#{msg['trade_id']})\n"
+            f"{msg['pair']} 포지션 {exit_wording} (#{msg['trade_id']})\n"
             f"{self._add_analyzed_candle(msg['pair'])}"
-            f"*{f'{profit_prefix}Profit' if is_fill else f'Unrealized {profit_prefix}Profit'}:* "
+            f"*{f'{profit_prefix}실현수익률' if is_fill else f'미실현 {profit_prefix}수익률'}:* "
             f"`{format_pct(msg['profit_ratio'])}{profit_extra}`\n"
             f"{cp_extra}"
             f"{enter_tag}"
-            f"*Exit Reason:* `{msg['exit_reason']}`\n"
-            f"*Direction:* `{msg['direction']}"
+            f"*청산 사유:* `{msg['exit_reason']}`\n"
+            f"*거래 방향:* `{msg['direction']}"
             f"{leverage_text}`\n"
-            f"*Amount:* `{round_value(msg['amount'], 8)}`\n"
-            f"*Open Rate:* `{fmt_coin2(msg['open_rate'], msg['quote_currency'])}`\n"
+            f"*진입 수량:* `{round_value(msg['amount'], 8)}`\n"
+            f"*진입 가격:* `{fmt_coin2(msg['open_rate'], msg['quote_currency'])}`\n"
         )
         if msg["type"] == RPCMessageType.EXIT and msg["current_rate"]:
             message += (
-                f"*Current Rate:* `{fmt_coin2(msg['current_rate'], msg['quote_currency'])}`\n"
+                f"*현재 가격:* `{fmt_coin2(msg['current_rate'], msg['quote_currency'])}`\n"
             )
             if msg["order_rate"]:
-                message += f"*Exit Rate:* `{fmt_coin2(msg['order_rate'], msg['quote_currency'])}`"
+                message += f"*청산 예약가:* `{fmt_coin2(msg['order_rate'], msg['quote_currency'])}`"
         elif msg["type"] == RPCMessageType.EXIT_FILL:
-            message += f"*Exit Rate:* `{fmt_coin2(msg['close_rate'], msg['quote_currency'])}`"
+            message += f"*청산 가격:* `{fmt_coin2(msg['close_rate'], msg['quote_currency'])}`"
 
         if is_sub_trade:
             stake_amount_fiat = self.__format_profit_fiat(msg, "stake_amount")
 
             rem = fmt_coin(msg["stake_amount"], msg["quote_currency"])
-            message += f"\n*Remaining:* `{rem}{stake_amount_fiat}`"
+            message += f"\n*잔여 투자금액:* `{rem}{stake_amount_fiat}`"
         else:
-            message += f"\n*Duration:* `{duration} ({duration_min:.1f} min)`"
+            # Format duration to Korean
+            duration_ko = str(duration).replace("days", "일").replace("day", "일")
+            message += f"\n*포지션 보유시간:* `{duration_ko} ({duration_min:.1f}분)`"
         return message
 
     def __format_profit_fiat(
@@ -549,34 +551,33 @@ class Telegram(RPCHandler):
         elif (
             msg["type"] == RPCMessageType.ENTRY_CANCEL or msg["type"] == RPCMessageType.EXIT_CANCEL
         ):
-            message_side = "enter" if msg["type"] == RPCMessageType.ENTRY_CANCEL else "exit"
+            message_side = "진입" if msg["type"] == RPCMessageType.ENTRY_CANCEL else "청산"
             message = (
                 f"\N{WARNING SIGN} *{self._exchange_from_msg(msg)}:* "
-                f"Cancelling {'partial ' if msg.get('sub_trade') else ''}"
-                f"{message_side} Order for {msg['pair']} "
-                f"(#{msg['trade_id']}). Reason: {msg['reason']}."
+                f"{msg['pair']} (#{msg['trade_id']}) 의 {'일부 ' if msg.get('sub_trade') else ''}"
+                f"{message_side} 주문 취소 중. 사유: {msg['reason']}."
             )
 
         elif msg["type"] == RPCMessageType.PROTECTION_TRIGGER:
             message = (
-                f"*Protection* triggered due to {msg['reason']}. "
-                f"`{msg['pair']}` will be locked until `{msg['lock_end_time']}`."
+                f"*안전 보호 조치(Protection)* 가 {msg['reason']}(으)로 인해 작동되었습니다. "
+                f"`{msg['pair']}` 자산은 `{msg['lock_end_time']}` 까지 거래가 잠금(Lock) 처리됩니다."
             )
 
         elif msg["type"] == RPCMessageType.PROTECTION_TRIGGER_GLOBAL:
             message = (
-                f"*Protection* triggered due to {msg['reason']}. "
-                f"*All pairs* will be locked until `{msg['lock_end_time']}`."
+                f"*전체 안전 보호 조치(Global Protection)* 가 {msg['reason']}(으)로 인해 작동되었습니다. "
+                f"*모든 코인 페어*가 `{msg['lock_end_time']}` 까지 거래 잠금 처리됩니다."
             )
 
         elif msg["type"] == RPCMessageType.STATUS:
-            message = f"*Status:* `{msg['status']}`"
+            message = f"*상태(Status):* `{msg['status']}`"
 
         elif msg["type"] == RPCMessageType.WARNING:
-            message = f"\N{WARNING SIGN} *Warning:* `{msg['status']}`"
+            message = f"\N{WARNING SIGN} *경고(Warning):* `{msg['status']}`"
         elif msg["type"] == RPCMessageType.EXCEPTION:
             # Errors will contain exceptions, which are wrapped in triple ticks.
-            message = f"\N{WARNING SIGN} *ERROR:* \n {msg['status']}"
+            message = f"\N{WARNING SIGN} *시스템 오류(ERROR):* \n {msg['status']}"
 
         elif msg["type"] == RPCMessageType.STARTUP:
             message = f"{msg['status']}"

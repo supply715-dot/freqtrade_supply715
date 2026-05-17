@@ -13,6 +13,22 @@
   * **ID (Username)**: `freqtrader`
   * **비밀번호 (Password)**: `password`
 
+---
+
+### 🚨 중요: "사이트에 연결할 수 없음"이 발생할 때!
+
+WebUI는 정적인 웹페이지가 아닙니다. **Freqtrade 봇 프로세스(서버)가 활성화되어 백그라운드 혹은 터미널에서 작동 중일 때만 접속이 가능**합니다. 봇이 꺼져 있다면 포트 `8080`이 닫혀 접속 오류가 납니다.
+
+#### 💡 해결 방법 (봇 기동하기)
+터미널(PowerShell 등)에서 아래 명령어를 실행하여 봇을 기동해 주십시오:
+
+```powershell
+# FreqAI(LightGBM)와 SwingTrendRiderV5 전략을 기반으로 가상 매매(Dry-run) 시작 및 WebUI 오픈
+freqtrade trade --strategy SwingTrendRiderV5_1h4h_20260516 --freqaimodel LightGBMRegressor --config config.json --dry-run
+```
+
+* 봇이 실행되면 로그 최하단에 `API Server started...` 메시지가 표시되며, 그 즉시 `http://127.0.0.1:8080`으로 접속하실 수 있습니다.
+
 > 💡 **보안 팁**: 실거래 가동 시에는 [config.json](file:///c:/Users/7supp/.gemini/antigravity/260509_freqtrade/config.json)의 `api_server` 섹션 내 `password`를 안전한 비밀번호로 변경하여 사용하시는 것을 권장합니다.
 
 ---

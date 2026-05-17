@@ -104,7 +104,7 @@ class RPCManager:
             self.send_msg(
                 {
                     "type": RPCMessageType.WARNING,
-                    "status": "Dry run is enabled. All trades are simulated.",
+                    "status": "⚠️ 가상 거래(Dry-run) 모드가 활성화되어 있습니다. 모든 거래는 가상으로 시뮬레이션됩니다.",
                 }
             )
         stake_currency = config["stake_currency"]
@@ -115,30 +115,31 @@ class RPCManager:
         timeframe = config["timeframe"]
         exchange_name = config["exchange"]["name"]
         if config["exchange"].get("demo_trading"):
-            exchange_name += " (demo trading)"
+            exchange_name += " (데모 트레이딩)"
         strategy_name = config.get("strategy", "")
-        pos_adjust_enabled = "On" if config["position_adjustment_enable"] else "Off"
+        pos_adjust_enabled = "활성화 (On)" if config["position_adjustment_enable"] else "비활성화 (Off)"
         self.send_msg(
             {
                 "type": RPCMessageType.STARTUP,
-                "status": f"*Exchange:* `{exchange_name}`\n"
-                f"*Stake per trade:* `{stake_amount} {stake_currency}`\n"
-                f"*Minimum ROI:* `{minimal_roi}`\n"
-                f"*{'Trailing ' if trailing_stop else ''}Stoploss:* `{stoploss}`\n"
-                f"*Position adjustment:* `{pos_adjust_enabled}`\n"
-                f"*Timeframe:* `{timeframe}`\n"
-                f"*Strategy:* `{strategy_name}`",
+                "status": f"🚀 *조나탄 AI 트레이딩 시스템 구동 요약*\n"
+                f"*연동 거래소:* `{exchange_name}`\n"
+                f"*회당 투자금액:* `{stake_amount} {stake_currency}`\n"
+                f"*최소 ROI 기준:* `{minimal_roi}`\n"
+                f"*{'트레일링 ' if trailing_stop else '고정 '}손절 비율(Stoploss):* `{stoploss}`\n"
+                f"*피라미딩(추가진입):* `{pos_adjust_enabled}`\n"
+                f"*캔들 타임프레임:* `{timeframe}`\n"
+                f"*기동 AI 전략:* `{strategy_name}`",
             }
         )
         self.send_msg(
             {
                 "type": RPCMessageType.STARTUP,
-                "status": f"Searching for {stake_currency} pairs to buy and sell "
-                f"based on {pairlist.short_desc()}",
+                "status": f"🔍 {pairlist.short_desc()} 필터링 알고리즘에 기초하여 감시 대상 `{stake_currency}` 코인 페어를 탐색하기 시작합니다.",
             }
         )
         if len(protections.name_list) > 0:
             prots = "\n".join([p for prot in protections.short_desc() for k, p in prot.items()])
+            prots_ko = prots.replace("StoplossGuard", "손절 보호 필터").replace("CooldownPeriod", "쿨다운 유예 기간")
             self.send_msg(
-                {"type": RPCMessageType.STARTUP, "status": f"Using Protections: \n{prots}"}
+                {"type": RPCMessageType.STARTUP, "status": f"🛡️ *시스템 안전 규칙(Protections) 적용 현황:* \n{prots_ko}"}
             )

@@ -580,7 +580,13 @@ class Telegram(RPCHandler):
             message = f"\N{WARNING SIGN} *시스템 오류(ERROR):* \n {msg['status']}"
 
         elif msg["type"] == RPCMessageType.STARTUP:
-            message = f"{msg['status']}"
+            status_text = msg['status']
+            if "running" in status_text.lower():
+                version_match = re.search(r'v[\d\.]+(?:-dev-\w+)?', status_text)
+                version_str = f" (버전: {version_match.group(0)})" if version_match else ""
+                message = f"🚀 *조나탄 AI 트레이딩 봇 가동 시작!*{version_str}\n*상태:* `정상 구동 중` \N{WHITE HEAVY CHECK MARK}"
+            else:
+                message = f"📢 *알림:* {status_text}"
         elif msg["type"] == RPCMessageType.STRATEGY_MSG:
             message = f"{msg['msg']}"
         else:
@@ -768,40 +774,40 @@ class Telegram(RPCHandler):
             r["realized_profit_r"] = fmt_coin(r["realized_profit"], r["quote_currency"])
             r["total_profit_abs_r"] = fmt_coin(r["total_profit_abs"], r["quote_currency"])
             lines = [
-                f"*Trade ID:* `{r['trade_id']}`"
-                + (f" `(since {r['open_date_hum']})`" if r["is_open"] else ""),
-                f"*Current Pair:* {r['pair']}",
+                f"*거래 번호 (ID):* `{r['trade_id']}`"
+                + (f" `(진입 후 {r['open_date_hum']})`" if r["is_open"] else ""),
+                f"*현재 코인 페어:* {r['pair']}",
                 (
-                    f"*Direction:* {'`Short`' if r.get('is_short') else '`Long`'}"
-                    + (f" ` ({r['leverage']}x)`" if r.get("leverage") else "")
+                    f"*거래 방향:* {'`숏 (Short)`' if r.get('is_short') else '`롱 (Long)`'}"
+                    + (f" ` ({r['leverage']}배 레버리지)`" if r.get("leverage") else "")
                 ),
-                f"*Amount:* `{r['amount']} ({r['stake_amount_r']})`",
-                f"*Total invested:* `{r['max_stake_amount_r']}`" if position_adjust else "",
-                f"*Enter Tag:* `{r['enter_tag']}`" if r["enter_tag"] else "",
-                f"*Exit Reason:* `{r['exit_reason']}`" if r.get("exit_reason") else "",
+                f"*진입 수량:* `{r['amount']} ({r['stake_amount_r']})`",
+                f"*총 투자금액:* `{r['max_stake_amount_r']}`" if position_adjust else "",
+                f"*진입 조건:* `{r['enter_tag']}`" if r["enter_tag"] else "",
+                f"*청산 사유:* `{r['exit_reason']}`" if r.get("exit_reason") else "",
             ]
 
             if position_adjust:
                 max_buy_str = f"/{max_entries + 1}" if (max_entries > 0) else ""
                 lines.extend(
                     [
-                        f"*Number of Entries:* `{r['nr_of_successful_entries']}{max_buy_str}`",
-                        f"*Number of Exits:* `{r['nr_of_successful_exits']}`",
+                        f"*추가 진입 횟수:* `{r['nr_of_successful_entries']}{max_buy_str}`",
+                        f"*분할 청산 횟수:* `{r['nr_of_successful_exits']}`",
                     ]
                 )
 
             lines.extend(
                 [
-                    f"*Open Rate:* `{round_value(r['open_rate'], 8)}`",
-                    f"*Close Rate:* `{round_value(r['close_rate'], 8)}`" if r["close_rate"] else "",
-                    f"*Open Date:* `{r['open_date']}`",
-                    f"*Close Date:* `{r['close_date']}`" if r["close_date"] else "",
+                    f"*진입 가격:* `{round_value(r['open_rate'], 8)}`",
+                    f"*청산 가격:* `{round_value(r['close_rate'], 8)}`" if r["close_rate"] else "",
+                    f"*진입 시간:* `{r['open_date']}`",
+                    f"*청산 시간:* `{r['close_date']}`" if r["close_date"] else "",
                     (
-                        f" \n*Current Rate:* `{round_value(r['current_rate'], 8)}`"
+                        f" \n*현재 가격:* `{round_value(r['current_rate'], 8)}`"
                         if r["is_open"]
                         else ""
                     ),
-                    ("*Unrealized Profit:* " if r["is_open"] else "*Close Profit: *")
+                    ("*미실현 손익:* " if r["is_open"] else "*청산 손익:* ")
                     + f"`{format_pct(r['profit_ratio'])}` `({r['profit_abs_r']})`",
                 ]
             )
@@ -812,12 +818,12 @@ class Telegram(RPCHandler):
                     and r.get("realized_profit_ratio") is not None
                 ):
                     lines.append(
-                        f"*Realized Profit:* `{format_pct(r['realized_profit_ratio'])} "
+                        f"*실현 손익:* `{format_pct(r['realized_profit_ratio'])} "
                         f"({r['realized_profit_r']})`"
                     )
                 if r.get("total_profit_ratio") is not None:
                     lines.append(
-                        f"*Total Profit:* `{format_pct(r['total_profit_ratio'])} "
+                        f"*누적 총 손익:* `{format_pct(r['total_profit_ratio'])} "
                         f"({r['total_profit_abs_r']})`"
                     )
 
@@ -825,7 +831,7 @@ class Telegram(RPCHandler):
                 lines.append(" ")
                 # Adding liquidation only if it is not None
                 if liquidation := r.get("liquidation_price"):
-                    lines.append(f"*Liquidation:* `{round_value(liquidation, 8)}`")
+                    lines.append(f"*🚨 강제청산 가격:* `{round_value(liquidation, 8)}`")
 
                 if (
                     r["stop_loss_abs"] != r["initial_stop_loss_abs"]
@@ -833,22 +839,22 @@ class Telegram(RPCHandler):
                 ):
                     # Adding initial stoploss only if it is different from stoploss
                     lines.append(
-                        f"*Initial Stoploss:* `{round_value(r['initial_stop_loss_abs'], 8)}` "
+                        f"*최초 손절가:* `{round_value(r['initial_stop_loss_abs'], 8)}` "
                         f"`({format_pct(r['initial_stop_loss_ratio'])})`"
                     )
 
                 # Adding stoploss and stoploss percentage only if it is not None
                 lines.append(
-                    f"*Stoploss:* `{round_value(r['stop_loss_abs'], 8)}` "
+                    f"*현재 손절가:* `{round_value(r['stop_loss_abs'], 8)}` "
                     + (f"`({format_pct(r['stop_loss_ratio'])})`" if r["stop_loss_ratio"] else "")
                 )
                 lines.append(
-                    f"*Stoploss distance:* `{round_value(r['stoploss_current_dist'], 8)}` "
+                    f"*손절선까지 거리:* `{round_value(r['stoploss_current_dist'], 8)}` "
                     f"`({format_pct(r['stoploss_current_dist_ratio'])})`"
                 )
                 if open_orders := r.get("open_orders"):
                     lines.append(
-                        f"*Open Order:* `{open_orders}`"
+                        f"*미체결 주문:* `{open_orders}`"
                         + (f"- `{r['exit_order_status']}`" if r["exit_order_status"] else "")
                     )
 
@@ -1052,13 +1058,13 @@ class Telegram(RPCHandler):
         expectancy_ratio = stats["expectancy_ratio"]
 
         # Direction-specific labels
-        direction_label = f" {direction}" if direction else ""
+        direction_label_ko = " 숏(Short)" if direction == "short" else (" 롱(Long)" if direction == "long" else "")
         no_trades_msg = (
-            f"No{direction_label} trades yet.\n*Bot started:* `{stats['bot_start_date']}`"
+            f"아직 완료된{direction_label_ko} 거래가 존재하지 않습니다.\n*봇 최초 기동일:* `{stats['bot_start_date']}`"
         )
-        no_closed_msg = f"`No closed{direction_label} trade` \n"
-        closed_roi_label = f"*ROI:* Closed{direction_label} trades"
-        all_roi_label = f"*ROI:* All{direction_label} trades"
+        no_closed_msg = f"`완료된{direction_label_ko} 거래 없음` \n"
+        closed_roi_label = f"📈 *실현 누적 수익률 (청산 완료{direction_label_ko} 거래):*"
+        all_roi_label = f"📊 *전체 종합 수익률 (진입 포함{direction_label_ko} 거래):*"
 
         if stats["trade_count"] == 0:
             return no_trades_msg
@@ -1087,32 +1093,32 @@ class Telegram(RPCHandler):
             f"({format_pct(profit_all_ratio_mean)}) "
             f"({profit_all_percent} \N{GREEK CAPITAL LETTER SIGMA}%)`\n"
             f"{fiat_all_trades}"
-            f"*Total Trade Count:* `{trade_count}`\n"
-            f"*Bot started:* `{stats['bot_start_date']}`\n"
-            f"*{'First Trade opened' if not timescale else 'Showing Profit since'}:* "
+            f"*총 거래 횟수:* `{trade_count}`\n"
+            f"*봇 최초 기동일:* `{stats['bot_start_date']}`\n"
+            f"*{'최초 거래 진입일' if not timescale else '수익률 분석 시작일'}:* "
             f"`{first_trade_date}`\n"
-            f"*Latest Trade opened:* `{latest_trade_date}`\n"
-            f"*Win / Loss:* `{stats['winning_trades']} / {stats['losing_trades']}`\n"
-            f"*Winrate:* `{format_pct(winrate)}`\n"
-            f"*Expectancy (Ratio):* `{expectancy:.2f} ({expectancy_ratio:.2f})`"
+            f"*최근 거래 진입일:* `{latest_trade_date}`\n"
+            f"*승 / 패:* `{stats['winning_trades']} / {stats['losing_trades']}`\n"
+            f"*승률:* `{format_pct(winrate)}`\n"
+            f"*기대값 (비율):* `{expectancy:.2f} ({expectancy_ratio:.2f})`"
         )
 
         if stats["closed_trade_count"] > 0:
             markdown_msg += (
-                f"\n*Avg. Duration:* `{avg_duration}`\n"
-                f"*Best Performing:* `{best_pair}: {best_pair_profit_abs} "
+                f"\n*평균 보유 시간:* `{avg_duration}`\n"
+                f"*최고 성과 코인:* `{best_pair}: {best_pair_profit_abs} "
                 f"({format_pct(best_pair_profit_ratio)})`\n"
-                f"*Trading volume:* `{fmt_coin(stats['trading_volume'], stake_cur)}`\n"
-                f"*Profit factor:* `{stats['profit_factor']:.2f}`\n"
-                f"*Max Drawdown:* `{format_pct(stats['max_drawdown'])} "
+                f"*총 거래 대금:* `{fmt_coin(stats['trading_volume'], stake_cur)}`\n"
+                f"*프로핏 팩터:* `{stats['profit_factor']:.2f}`\n"
+                f"*최대 낙폭(MDD):* `{format_pct(stats['max_drawdown'])} "
                 f"({fmt_coin(stats['max_drawdown_abs'], stake_cur)})`\n"
-                f"    from `{stats['max_drawdown_start']} "
+                f"    [시작] `{stats['max_drawdown_start']} "
                 f"({fmt_coin(stats['drawdown_high'], stake_cur)})`\n"
-                f"    to `{stats['max_drawdown_end']} "
+                f"    [종료] `{stats['max_drawdown_end']} "
                 f"({fmt_coin(stats['drawdown_low'], stake_cur)})`\n"
-                f"*Current Drawdown:* `{format_pct(stats['current_drawdown'])} "
+                f"*현재 낙폭:* `{format_pct(stats['current_drawdown'])} "
                 f"({fmt_coin(stats['current_drawdown_abs'], stake_cur)})`\n"
-                f"    from `{stats['current_drawdown_start']} "
+                f"    [시작] `{stats['current_drawdown_start']} "
                 f"({fmt_coin(stats['current_drawdown_high'], stake_cur)})`\n"
             )
 

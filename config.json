@@ -15,7 +15,7 @@
         "unit": "minutes"
     },
     "entry_pricing": {
-        "price_side": "same",
+        "price_side": "other",
         "use_order_book": true,
         "order_book_top": 1,
         "check_depth_of_market": {
@@ -24,7 +24,7 @@
         }
     },
     "exit_pricing": {
-        "price_side": "same",
+        "price_side": "other",
         "use_order_book": true,
         "order_book_top": 1
     },
@@ -92,7 +92,7 @@
         "listen_port": 8080,
         "verbosity": "error",
         "enable_openapi": false,
-        "jwt_secret_key": "YOUR_JWT_SECRET_KEY",
+        "jwt_secret_key": "YOUR_SUPER_SECRET_JWT_KEY_MINIMUM_32_CHARS",
         "CORS_origins": [],
         "username": "YOUR_API_USERNAME",
         "password": "YOUR_API_PASSWORD"

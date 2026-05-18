@@ -20,6 +20,13 @@ class SwingTrendRiderV4_FreqAI_Active_20260515(IStrategy):
     # FreqAI 관련 설정
     process_only_new_candles = True
     use_exit_signal = True
+
+    # 하이퍼옵트 파라미터 선언
+    adx_min = IntParameter(10, 40, default=20, space='buy', optimize=True)
+    rsi_long = IntParameter(40, 70, default=52, space='buy', optimize=True)
+    rsi_short = IntParameter(30, 60, default=48, space='buy', optimize=True)
+    prediction_threshold = DecimalParameter(0.005, 0.050, default=0.012, space='buy', decimals=3, optimize=True)
+
     
     # ROI: AI가 관리하므로 더 유연하게 설정
     minimal_roi = {
@@ -28,6 +35,9 @@ class SwingTrendRiderV4_FreqAI_Active_20260515(IStrategy):
         "960": 0.10
     }
 
+    # 레버리지 최적화 파라미터 (1배 ~ 10배)
+    opt_leverage = IntParameter(1, 10, default=5, space='buy', optimize=True)
+    
     stoploss = -0.08 
 
     # 수수료 및 손절 연동형 시장가 최적화 설정 주입 (진입은 지정가 우선!)
@@ -109,7 +119,7 @@ class SwingTrendRiderV4_FreqAI_Active_20260515(IStrategy):
     def leverage(self, pair: str, current_time: datetime, current_rate: float,
                  proposed_leverage: float, max_leverage: float, entry_tag: str,
                  side: str, **kwargs) -> float:
-        return 5.0
+        return float(self.opt_leverage.value)
 
     # -------------------------------------------------------------------------
     # FreqAI: 피처 엔지니어링 (학습 데이터 생성)
@@ -155,10 +165,10 @@ class SwingTrendRiderV4_FreqAI_Active_20260515(IStrategy):
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         # --- 공격적 세팅 (Active Mode) ---
-        prediction_threshold = 0.012 # 2.0% -> 1.2% 로 하향
-        adx_min = 20                 # 25 -> 20 으로 하향
-        rsi_long = 52                # 55 -> 52 로 하향
-        rsi_short = 48               # 45 -> 48 로 상향 (범위 확대)
+        prediction_threshold_val = self.prediction_threshold.value
+        adx_min_val = self.adx_min.value
+        rsi_long_val = self.rsi_long.value
+        rsi_short_val = self.rsi_short.value
         di_limit = 0.5               # 데이터 신뢰도 필터 (약간 완화)
         
         if 'DI_ratio' not in dataframe.columns:
@@ -171,9 +181,9 @@ class SwingTrendRiderV4_FreqAI_Active_20260515(IStrategy):
             (
                 (dataframe['do_predict'] == 1) &
                 (dataframe['DI_ratio'] < di_limit) &
-                (dataframe['&-target_roi'] > prediction_threshold) &
-                (dataframe['rsi'] > rsi_long) &
-                (dataframe['adx'] > adx_min) &
+                (dataframe['&-target_roi'] > prediction_threshold_val) &
+                (dataframe['rsi'] > rsi_long_val) &
+                (dataframe['adx'] > adx_min_val) &
                 (dataframe['tema'] > dataframe['ema200'])
             ),
             'enter_long'] = 1
@@ -183,9 +193,9 @@ class SwingTrendRiderV4_FreqAI_Active_20260515(IStrategy):
             (
                 (dataframe['do_predict'] == 1) &
                 (dataframe['DI_ratio'] < di_limit) &
-                (dataframe['&-target_roi'] < -prediction_threshold) &
-                (dataframe['rsi'] < rsi_short) &
-                (dataframe['adx'] > adx_min) &
+                (dataframe['&-target_roi'] < -prediction_threshold_val) &
+                (dataframe['rsi'] < rsi_short_val) &
+                (dataframe['adx'] > adx_min_val) &
                 (dataframe['tema'] < dataframe['ema200'])
             ),
             'enter_short'] = 1

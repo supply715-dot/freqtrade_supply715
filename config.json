@@ -10,8 +10,8 @@
     "dry_run": true,
     "cancel_open_orders_on_exit": false,
     "unfilledtimeout": {
-        "entry": 10,
-        "exit": 30,
+        "entry": 2,
+        "exit": 5,
         "unit": "minutes"
     },
     "entry_pricing": {
@@ -29,17 +29,17 @@
         "order_book_top": 1
     },
     "exchange": {
-        "name": "binance",
+        "name": "bybit",
         "key": "",
         "secret": "",
         "ccxt_config": {
             "options": {
-                "defaultType": "future"
+                "defaultType": "swap"
             }
         },
         "ccxt_async_config": {
             "options": {
-                "defaultType": "future"
+                "defaultType": "swap"
             }
         },
         "pair_whitelist": [
@@ -49,6 +49,18 @@
         "pair_blacklist": [
             "BNB/USDT:USDT"
         ]
+    },
+    "order_types": {
+        "entry": "market",
+        "exit": "market",
+        "emergency_exit": "market",
+        "force_entry": "market",
+        "force_exit": "market",
+        "stoploss": "market",
+        "stoploss_on_exchange": true,
+        "stoploss_price_type": "last",
+        "stoploss_on_exchange_interval": 60,
+        "stoploss_on_exchange_limit_ratio": 0.99
     },
     "pairlists": [
         {
@@ -70,9 +82,9 @@
         "remove_pumps": false
     },
     "telegram": {
-        "enabled": true,
-        "token": "your_telegram_token",
-        "chat_id": "your_telegram_chat_id"
+        "enabled": false,
+        "token": "YOUR_TELEGRAM_TOKEN",
+        "chat_id": "YOUR_TELEGRAM_CHAT_ID"
     },
     "api_server": {
         "enabled": true,
@@ -80,10 +92,10 @@
         "listen_port": 8080,
         "verbosity": "error",
         "enable_openapi": false,
-        "jwt_secret_key": "v-E_8Yv2R9T!zLp9W5K#jA2qG5N@mX8sP1uC4B7D0F3H6J9K",
+        "jwt_secret_key": "YOUR_JWT_SECRET_KEY",
         "CORS_origins": [],
-        "username": "freqtrader",
-        "password": "password"
+        "username": "YOUR_API_USERNAME",
+        "password": "YOUR_API_PASSWORD"
     },
     "bot_name": "freqtrade",
     "initial_state": "running",

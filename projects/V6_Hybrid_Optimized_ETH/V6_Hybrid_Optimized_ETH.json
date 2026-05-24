@@ -1,0 +1,34 @@
+{
+  "strategy_name": "V6_Hybrid_Optimized_ETH",
+  "params": {
+    "trailing": {
+      "trailing_stop": true,
+      "trailing_stop_positive": 0.02,
+      "trailing_stop_positive_offset": 0.05,
+      "trailing_only_offset_is_reached": true
+    },
+    "max_open_trades": {
+      "max_open_trades": 1
+    },
+    "buy": {
+      "adx_long": 20,
+      "adx_short": 22,
+      "leverage_long": 9,
+      "leverage_short": 7,
+      "prediction_threshold": 0.008,
+      "prediction_short_threshold": 0.006,
+      "rsi_long": 42,
+      "rsi_short": 45
+    },
+    "roi": {
+      "0": 0.40,
+      "480": 0.20,
+      "960": 0.10
+    },
+    "stoploss": {
+      "stoploss": -0.08
+    }
+  },
+  "ft_stratparam_v": 1,
+  "export_time": "2026-05-24 19:25:00.000000+00:00"
+}

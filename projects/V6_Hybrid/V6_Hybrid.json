@@ -1,0 +1,32 @@
+{
+  "strategy_name": "V6_Hybrid",
+  "params": {
+    "trailing": {
+      "trailing_stop": true,
+      "trailing_stop_positive": 0.02,
+      "trailing_stop_positive_offset": 0.05,
+      "trailing_only_offset_is_reached": true
+    },
+    "max_open_trades": {
+      "max_open_trades": 2
+    },
+    "buy": {
+      "adx_min": 24,
+      "opt_leverage": 7,
+      "prediction_threshold": 0.009,
+      "rsi_long": 43,
+      "rsi_short": 40
+    },
+    "roi": {
+      "0": 0.664,
+      "1549": 0.099,
+      "3347": 0.065,
+      "6876": 0
+    },
+    "stoploss": {
+      "stoploss": -0.08
+    }
+  },
+  "ft_stratparam_v": 1,
+  "export_time": "2026-05-23 11:02:00.781883+00:00"
+}

@@ -1,5 +1,5 @@
 {
-  "strategy_name": "V6_Hybrid_Optimized_Combined",
+  "strategy_name": "V8_BTC_ETH_optimized",
   "params": {
     "trailing": {
       "trailing_stop": true,

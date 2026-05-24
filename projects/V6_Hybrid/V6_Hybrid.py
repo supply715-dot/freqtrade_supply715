@@ -28,6 +28,7 @@ class V6_Hybrid(IStrategy):
     rsi_long = IntParameter(40, 70, default=52, space='buy', optimize=True)
     rsi_short = IntParameter(30, 60, default=48, space='buy', optimize=True)
     prediction_threshold = DecimalParameter(0.005, 0.050, default=0.012, space='buy', decimals=3, optimize=True)
+    prediction_short_threshold = DecimalParameter(0.002, 0.030, default=0.005, space='buy', decimals=3, optimize=True)
 
     
     # ROI: AI가 관리하므로 더 유연하게 설정
@@ -170,6 +171,7 @@ class V6_Hybrid(IStrategy):
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         # --- 공격적 세팅 (Active Mode) ---
         prediction_threshold_val = self.prediction_threshold.value
+        prediction_short_threshold_val = self.prediction_short_threshold.value
         adx_min_val = self.adx_min.value
         rsi_long_val = self.rsi_long.value
         rsi_short_val = self.rsi_short.value
@@ -197,10 +199,10 @@ class V6_Hybrid(IStrategy):
             (
                 (dataframe['do_predict'] == 1) &
                 (dataframe['DI_ratio'] < di_limit) &
-                (dataframe['&-target_roi'] < -prediction_threshold_val) &
+                (dataframe['&-target_roi'] < -prediction_short_threshold_val) &
                 (dataframe['rsi'] < rsi_short_val) &
                 (dataframe['adx'] > adx_min_val) &
-                (dataframe['tema'] < dataframe['ema200'])
+                (dataframe['fastEMA'] < dataframe['slowEMA'])
             ),
             'enter_short'] = 1
 

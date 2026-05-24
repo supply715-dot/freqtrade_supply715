@@ -31,11 +31,11 @@
 
 ---
 
-## 3. 📉 비트코인(BTC) 3개년 종합 자산 곡선 vs BTC 가격 시각화
+## 3. 📈 비트코인(BTC) & 이더리움(ETH) 3개년 자산 곡선 vs 가격 시각화 (숏 활성화 패치 전후 비교)
 
-아래 차트는 5개 전략의 비트코인(BTC) 단독 누적 수익률(좌측 Y축)과 BTC 가격 추이(우측 Y축, 배경 회색 음영)를 동일 시간선상에 겹쳐서 그린 최종 결과입니다.
+아래 차트는 최종 채택된 **V6_Hybrid** 전략에서 숏(SHORT) 포지션을 활성화하기 전(Long-Only, 보라색)과 활성화한 후(Short-Active Patch, 분홍색)의 비트코인(상단) 및 이더리움(하단) 누적 수익률 추이(좌측 Y축)와 각각의 자산 가격(우측 Y축, 배경 음영)을 겹쳐서 그린 최종 결과입니다.
 
-![3-Year BTC comprehensive Performance Comparison vs BTC Price](C:\Users\7supp\.gemini\antigravity\brain\d03fbdbc-2d31-480f-a93d-341a3e749063\comparison_chart_hybrid_all.png)
+![V6_Hybrid 3-Year Performance Comparison: Long-Only vs Short-Active with Price](C:\Users\7supp\.gemini\antigravity\brain\d03fbdbc-2d31-480f-a93d-341a3e749063\comparison_chart_short_active.png)
 
 ---
 

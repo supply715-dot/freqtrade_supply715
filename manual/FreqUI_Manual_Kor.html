@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FreqUI 실전 마스터 한글 메뉴얼</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #151c2c;
+      --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      --accent-green: linear-gradient(135deg, #10b981 0%, #047857 100%);
+      --accent-red: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border-color: #1e293b;
+      --glow-color: rgba(59, 130, 246, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 50px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 2.8rem;
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #1d4ed8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 15px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      font-weight: 400;
+    }
+
+    h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.8rem;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      color: #60a5fa;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      margin-top: 25px;
+      margin-bottom: 12px;
+      color: #93c5fd;
+    }
+
+    p {
+      margin-bottom: 15px;
+      color: #d1d5db;
+    }
+
+    /* GitHub 스타일 Alert 박스 */
+    .alert {
+      background-color: #1e293b;
+      border-left: 4px solid #3b82f6;
+      padding: 20px;
+      border-radius: 0 8px 8px 0;
+      margin: 25px 0;
+    }
+
+    .alert-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #60a5fa;
+    }
+
+    .alert-warning {
+      border-left-color: #ef4444;
+      background-color: rgba(239, 68, 68, 0.05);
+    }
+
+    .alert-warning .alert-title {
+      color: #f87171;
+    }
+
+    /* 카드 그리드 */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 25px;
+      margin: 30px 0;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 25px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      border-color: #3b82f6;
+      box-shadow: 0 10px 20px var(--glow-color);
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: #f3f4f6;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+
+    .card li {
+      margin-bottom: 10px;
+      color: #9ca3af;
+      font-size: 0.95rem;
+    }
+
+    .card strong {
+      color: #e5e7eb;
+    }
+
+    /* 테이블 스타일 */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 25px 0;
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    th, td {
+      padding: 15px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background-color: rgba(59, 130, 246, 0.1);
+      color: #60a5fa;
+      font-weight: 600;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    code {
+      font-family: Consolas, Monaco, monospace;
+      background-color: #1e293b;
+      color: #f87171;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    pre {
+      background-color: #080c14;
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 20px 0;
+    }
+
+    pre code {
+      background-color: transparent;
+      color: #a7f3d0;
+      padding: 0;
+    }
+
+    /* 스위칭 단계 스텝 디자인 */
+    .step-list {
+      margin: 30px 0;
+      padding-left: 20px;
+    }
+
+    .step-item {
+      position: relative;
+      margin-bottom: 30px;
+      padding-left: 30px;
+      border-left: 2px solid #3b82f6;
+    }
+
+    .step-number {
+      position: absolute;
+      left: -16px;
+      top: 0;
+      background: var(--accent-gradient);
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+
+    /* FAQ 스타일 추가 */
+    .faq-section {
+      margin-top: 25px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .faq-item {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .faq-question {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #60a5fa;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .faq-answer {
+      color: #d1d5db;
+      font-size: 0.95rem;
+    }
+
+    .faq-answer p {
+      margin-bottom: 10px;
+    }
+
+    .faq-answer p:last-child {
+      margin-bottom: 0;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 80px;
+      padding-top: 30px;
+      border-top: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>FreqUI 실전 마스터 가이드</h1>
+      <div class="subtitle">V8_BTC_ETH_optimized 전략 운용 및 WebUI 정밀 제어 지침서</div>
+    </header>
+
+    <div class="alert">
+      <div class="alert-title">🧠 봇 자동 로그인 탑재 완료</div>
+      <p>본 가이드의 실시간 상태 확인용 WebUI(localhost:8080)에는 원클릭 자동 로그인이 내장되어 있습니다. 바탕화면의 실행 바로가기를 더블 클릭하면 자동으로 ID/PW가 입력되어 메인 화면으로 진입합니다.</p>
+    </div>
+
+    <h2>📈 1. WebUI(FreqUI) 주요 설정 항목의 상세 의미</h2>
+    <p>WebUI의 <code>Configuration</code> 탭 및 제어 화면에서 확인하고 조절할 수 있는 핵심 옵션들의 정량적 의미와 퀀트 설계 의도입니다.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>설정 변수명</th>
+          <th>현재값</th>
+          <th>상세 의미 및 작동 원리</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>max_open_trades</code></td>
+          <td><code>2</code></td>
+          <td>동시에 가동할 수 있는 최대 포지션 수입니다. 현재 2로 세팅되어 있어 비트코인과 이더리움이 각각 1개씩 포지션을 쥐며 자금을 양분합니다.</td>
+        </tr>
+        <tr>
+          <td><code>stake_amount</code></td>
+          <td><code>unlimited</code></td>
+          <td>1회 진입 시 베팅할 투자 원금 크기입니다. <code>unlimited</code>로 지정하면, 현재 계좌의 가용 잔고(USDT) 전체를 사용하여 <strong>지수함수적 복리(Compounding)</strong> 효과를 극대화합니다. (단리로 고정 시 <code>100</code> 등의 고정 액수 기입 가능)</td>
+        </tr>
+        <tr>
+          <td><code>dry_run</code></td>
+          <td><code>true</code></td>
+          <td>모의 가상 매매 활성화 여부입니다. <code>true</code>이면 실제 돈이 아닌 가상의 1,000 USDT로 실시간 호가창에서 가상 체결을 검증합니다.</td>
+        </tr>
+        <tr>
+          <td><code>margin_mode</code></td>
+          <td><code>isolated</code></td>
+          <td>선물 마진 모드입니다. <code>isolated</code>(격리 마진)를 사용하여 시장 이상 파동으로 인한 강제 청산 시 전체 지갑 잔고가 아닌 해당 포지션에 들어간 증거금만 잃도록 차단합니다.</td>
+        </tr>
+        <tr>
+          <td><code>stoploss</code></td>
+          <td><code>-0.08</code></td>
+          <td>절대 최대 손절 폭입니다. 레버리지를 감안하여 기초 자산이 진입가 대비 약 -1% 내외(배율 적용 시 계좌 손실 -8%) 역주행하면 칼같이 스탑로스 시장가 청산이 격발됩니다.</td>
+        </tr>
+        <tr>
+          <td><code>trailing_stop</code></td>
+          <td><code>true</code></td>
+          <td>트레일링 익절 추적 기능입니다. 가격이 상승하여 익절 목표(+5% 오프셋)에 도달하면, 고점 대비 -2% 하락할 때까지 익절 라인을 위로 끌어올리며 추적하여 최대 수익을 보존합니다.</td>
+        </tr>
+        <tr>
+          <td><code>freqai.enabled</code></td>
+          <td><code>true</code></td>
+          <td>머신러닝 모듈 활성화 여부입니다. 인공지능이 24시간 동안 실시간으로 다음 봉의 등락 확률(Target ROI)을 회귀 연산하기 위해 필수적으로 활성화되어 있습니다.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>⚡ 2. 드라이런(모의)에서 실제 매매(Live Trading)로 전환하는 법</h2>
+    <p>가상 테스트 단계를 끝마치고, 거래소의 실제 자금(USDT)을 사용하여 봇이 실전 자동 양방향 매매를 하도록 스위칭하는 정밀 가이드라인입니다.</p>
+
+    <div class="step-list">
+      <div class="step-item">
+        <div class="step-number">1</div>
+        <h3>Bybit 거래소 선물 지갑 및 자산 준비</h3>
+        <p>Bybit 거래소 계정의 <strong>Derivatives(선물) 지갑</strong>에 실제 투자할 <code>USDT</code> 증거금을 예치합니다.</p>
+      </div>
+
+      <div class="step-item">
+        <div class="step-number">2</div>
+        <h3>Bybit 선물 포지션 모드 설정 확인 (★필수)</h3>
+        <p>Bybit 거래소의 BTC/USDT 및 ETH/USDT 선물 거래 화면 우측 상단의 <strong>톱니바퀴(Settings) ➡️ Position Mode</strong>에 진입하여 반드시 <strong><code>One-way Mode</code> (단방향 모드)</strong>로 세팅합니다. <em>(Hedge Mode인 경우 API 주문 거부 에러가 발생합니다.)</em></p>
+      </div>
+
+      <div class="step-item">
+        <div class="step-number">3</div>
+        <h3>config.json 설정 변경</h3>
+        <p>프로젝트 폴더의 <code>config.json</code> 파일을 텍스트 에디터로 열어 <code>dry_run</code> 값을 <code>false</code>로 수정합니다.</p>
+        <pre><code>"dry_run": false,
+"stake_amount": "unlimited",  // 복리 가동 시 유지, 안전한 첫 가동 시 100 등 고정 금액 지정 가능</code></pre>
+      </div>
+
+      <div class="step-item">
+        <div class="step-number">4</div>
+        <h3>V8 전략의 실전 연동 실행</h3>
+        <p>바탕화면의 📈 <strong><code>FreqTradeAI</code> 바로가기</strong>를 더블 클릭하여 기동합니다. 봇이 Bybit API Key를 정상 검증하여 연동을 시작하고, WebUI 상단의 상태 뱃지가 <strong><code>Live</code></strong>로 초록색 표시되는지 확인합니다.</p>
+      </div>
+    </div>
+
+    <div class="alert alert-warning">
+      <div class="alert-title">⚠️ 실전 매매 전환 시 리스크 당부 사항</div>
+      <p>실전 매매 전환 후 첫 1주일 동안은 봇이 정상적으로 진입 및 손절/익절 주문을 Bybit에 넣는지 텔레그램 알림과 함께 상시 관찰해야 합니다. 시드가 크다면 최초 1~2주간은 <code>"stake_amount": 100</code> 과 같이 소액 단리로 가동해 안전을 확인한 뒤 <code>"unlimited"</code> 복리로 늘리는 것을 권장합니다.</p>
+    </div>
+
+    <h2>👥 3. FreqUI 화면 제어 팁</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">🚨 긴급 포지션 강제 청산 (Force Exit)</div>
+        <ul>
+          <li>• 대시보드 내 활성 거래 목록(Active Trades)의 <strong>Force Exit</strong> 버튼을 클릭합니다.</li>
+          <li>• 봇이 즉각 텔레그램 알림과 함께 Bybit 거래소에 <strong>시장가 청산 주문</strong>을 내어 해당 포지션을 털어냅니다.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔐 자동 잠금 및 수동 해제 (Locks)</div>
+        <ul>
+          <li>• 연이은 손절 등으로 봇이 특정 자산의 추가 진입을 일시 정지시키면 <strong>Locking</strong> 탭에 기록됩니다.</li>
+          <li>• 장세가 호전되어 강제로 거래를 재개하고 싶다면, 해당 탭 내의 <strong>자물쇠 해제(Unlock)</strong>를 클릭해 즉시 거래를 복구할 수 있습니다.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>❓ 4. 자주 묻는 질문 및 트러블슈팅 (FAQ)</h2>
+    <div class="faq-section">
+      <div class="faq-item">
+        <div class="faq-question">🙋 Q. 차트 데이터는 4시간에 한 번씩만 가져오나요? 전에는 실시간으로 가져온다고 하셨는데요.</div>
+        <div class="faq-answer">
+          <p><strong>아닙니다. 데이터 수집은 5초 간격으로 실시간으로 계속 수행됩니다.</strong></p>
+          <p>봇은 <code>config.json</code>의 <code>"process_throttle_secs": 5</code> 설정에 따라 5초 주기로 Bybit 거래소에서 최신 호가 및 체결 데이터를 쿼리합니다. 이에 따라 FreqUI 차트에서 보여주는 4시간봉 중 <strong>가장 우측의 생성 중인 캔들(마지막 캔들)은 5초마다 Bybit의 실제 시세를 반영하여 실시간으로 위아래로 움직입니다.</strong></p>
+          <p><strong>'4시간봉(4h)'</strong>이란 수집한 데이터를 묶어 전략적 지표를 계산하거나 머신러닝(FreqAI) 모델의 학습 및 추론에 활용하는 <strong>시간 프레임(Timeframe) 단위</strong>를 지칭할 뿐, 4시간에 한 번씩만 수집한다는 뜻이 아닙니다. 또한 손절(Stoploss), 트레일링 익절, 비상 청산 감시 등 리스크 관리 프로세스는 매 5초 단위의 실시간 시세를 추적하며 작동하므로 안전합니다.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">🙋 Q. 차트 화면에서 시간봉(1분, 5분, 1시간 등)을 마음대로 바꿀 수 없나요? 설정이 안 보입니다.</div>
+        <div class="faq-answer">
+          <p><strong>원인</strong>: Freqtrade 봇은 메모리 및 Bybit API 호출 한도를 최적화하기 위해, 현재 구동 중인 전략(<code>V8_BTC_ETH_optimized.py</code>)과 FreqAI 설정에서 정의된 메인 시간봉(여기서는 <strong><code>4시간봉(4h)</code></strong>)의 데이터만 거래소로부터 실시간으로 다운로드하고 캐싱합니다. FreqUI 차트는 봇이 직접 수집하여 보관하고 있는 데이터만을 API를 통해 전달받아 시각화하므로, 수집하지 않고 있는 다른 시간봉 데이터는 차트에서 보여줄 수 없어서 선택 메뉴가 보이지 않거나 비활성화됩니다.</p>
+          <p><strong>해결책</strong>: 봇이 바라보는 4시간봉의 진입/청산 마커 외에 15분봉, 1시간봉, 1일봉 등 다양한 시간대에서 상세한 기술적 분석을 하려면, <strong>Bybit 거래소 웹사이트나 트레이딩뷰(TradingView)를 별도의 브라우저 창으로 띄워서 함께 확인하는 것을 권장</strong>합니다. FreqUI 차트는 봇의 동작 상태를 직관적으로 모니터링하는 디버깅용 보조 툴입니다.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">🙋 Q. 브라우저 대시보드 화면이 멈추거나 먹통이 될 때는 어떻게 하나요?</div>
+        <div class="faq-answer">
+          <p><strong>원인</strong>: 봇 엔진 프로세스가 예기치 않게 종료되었거나, Bybit API 통신 장애 등으로 연결이 끊겼을 때 발생합니다.</p>
+          <p><strong>해결책</strong>: 실행 중인 FreqTradeAI 터미널 창을 닫고, 바탕화면의 <strong>FreqTradeAI 바로가기 아이콘</strong>을 다시 더블클릭하여 엔진을 재기동해 주십시오.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">🙋 Q. 텔레그램 명령어로도 제어가 가능한가요?</div>
+        <div class="faq-answer">
+          <p><strong>네, 가능합니다.</strong> 등록된 텔레그램 방에 접속하여 <code>/status</code>, <code>/balance</code>, <code>/profit</code> 등을 입력하시면 언제 어디서나 봇 상태를 조회할 수 있습니다. 비상 상황 시 텔레그램 창에 <code>/forceexit all</code> 또는 <code>/stop</code>을 입력하면 즉시 모든 포지션을 시장가로 정리하고 봇을 일시정지할 수 있습니다.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">🙋 Q. 실전 가동 시 투자금 부족(Insufficient Balance) 경고가 뜹니다.</div>
+        <div class="faq-answer">
+          <p><strong>원인</strong>: Bybit 선물 지갑에 보유한 USDT 마진 잔액보다 봇의 베팅 설정(레버리지 및 자금 배분 비율)이 크거나, 펀딩비 등의 지출로 잔고가 부족해진 경우입니다.</p>
+          <p><strong>해결책</strong>: Bybit 선물(Derivatives) 지갑에 예치된 USDT 증거금이 충분한지 확인해 주시고, <code>config.json</code>의 <code>stake_amount</code>를 조절해 주십시오.</p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>FreqUI 실전 마스터 가이드 &copy; 2026. Antigravity Quant Engineering Team.</p>
+    </footer>
+  </div>
+</body>
+</html>

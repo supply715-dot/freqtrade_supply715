@@ -122,6 +122,8 @@ class SwingTrendRiderV4_FreqAI_Active_20260515(IStrategy):
     def leverage(self, pair: str, current_time: datetime, current_rate: float,
                  proposed_leverage: float, max_leverage: float, entry_tag: str,
                  side: str, **kwargs) -> float:
+        if side == 'short':
+            return 3.0
         return float(self.opt_leverage.value)
 
     # -------------------------------------------------------------------------

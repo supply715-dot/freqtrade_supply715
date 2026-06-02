@@ -1918,20 +1918,20 @@ class Telegram(RPCHandler):
         :return: None
         """
         force_enter_text = (
-            "*/forcelong <pair> [<rate>]:* `지정한 코인 페어에 즉시 시장가/지정가 롱(매수) 포지션 진입 시도` \n"
+            "*/forcelong <pair> [<rate>]:* `지정한 페어에 대해 강제 롱(Long) 포지션 진입 시도 (생략 시 시장가)` \n"
         )
         if self._rpc._freqtrade.trading_mode != TradingMode.SPOT:
             force_enter_text += (
-                "*/forceshort <pair> [<rate>]:* `지정한 코인 페어에 즉시 시장가/지정가 숏(매도) 포지션 진입 시도` \n"
+                "*/forceshort <pair> [<rate>]:* `지정한 페어에 대해 강제 숏(Short) 포지션 진입 시도 (생략 시 시장가)` \n"
             )
         message = (
-            "🎮 *봇 실시간 제어 (Bot Control)*\n"
+            "🤖 *봇 제어 명령어 (Bot Control)*\n"
             "------------\n"
-            "*/start:* `트레이딩 봇 가동 시작 및 거래소 감시 활성화`\n"
-            "*/pause:* `신규 진입 일시 정지 (보유 포지션 청산은 계속 정상 관리)`\n"
-            "*/stop:* `트레이딩 봇 작동 정지`\n"
-            "*/stopentry:* `신규 진입 영구 중단 (보유 포지션 청산은 계속 정상 관리)` \n"
-            "*/forceexit <trade_id>|all:* `지정한 거래 ID 또는 전체 보유 포지션 즉시 시장가 청산 강제 종료`\n"
+            "*/start:* `트레이딩 봇 시작 및 거래소 감시 활성화`\n"
+            "*/pause:* `신규 진입 일시 중지 (기존 포지션은 계속 정상 관리)`\n"
+            "*/stop:* `트레이딩 봇 가동 중지`\n"
+            "*/stopentry:* `신규 진입 영구 중단 (기존 포지션은 계속 정상 관리)` \n"
+            "*/forceexit <trade_id>|all:* `지정한 거래 ID 또는 전체 보유 포지션 즉시 시장가 청산 및 강제 종료`\n"
             "*/fx <trade_id>|all:* `/forceexit 의 단축 명령어`\n"
             f"{force_enter_text if self._config.get('force_entry_enable', False) else ''}"
             "*/delete <trade_id>:* `데이터베이스에서 해당 거래 ID 기록을 영구 삭제 (보유 자산에는 영향 없음)`\n"
@@ -1941,7 +1941,7 @@ class Telegram(RPCHandler):
             "*/whitelist [sorted] [baseonly]:* `현재 감시 대상 화이트리스트 코인 목록 조회`\n"
             "*/blacklist [pair]:* `현재 진입 금지 블랙리스트 코인 목록 조회 또는 특정 코인 블랙리스트 추가` \n"
             "*/blacklist_delete [pairs]| /bl_delete [pairs]:* "
-            "`블랙리스트에서 특정 코인 제외. 설정 파일 재로딩 시 초기화됩니다.` \n"
+            "`블랙리스트에서 특정 코인 제외. 설정 파일 재로드 시 초기화됩니다.` \n"
             "*/reload_config:* `설정 파일(config.json) 강제 재로드 및 적용` \n"
             "*/unlock <pair|id>:* `해당 코인 또는 특정 거래 잠금 상태 수동 해제`\n"
             "\n"

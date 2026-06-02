@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
+
 import logging
 import numpy as np
 import pandas as pd

@@ -7,7 +7,7 @@
     "fiat_display_currency": "USD",
     "trading_mode": "futures",
     "margin_mode": "isolated",
-    "dry_run": true,
+    "dry_run": false,
     "cancel_open_orders_on_exit": false,
     "unfilledtimeout": {
         "entry": 2,
@@ -34,12 +34,18 @@
         "secret": "",
         "ccxt_config": {
             "options": {
-                "defaultType": "swap"
+                "defaultType": "swap",
+                "recvWindow": 10000,
+                "adjustForTimeDifference": true,
+                "timeDifference": 4724
             }
         },
         "ccxt_async_config": {
             "options": {
-                "defaultType": "swap"
+                "defaultType": "swap",
+                "recvWindow": 10000,
+                "adjustForTimeDifference": true,
+                "timeDifference": 4724
             }
         },
         "pair_whitelist": [

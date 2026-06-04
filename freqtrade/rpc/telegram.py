@@ -296,6 +296,7 @@ class Telegram(RPCHandler):
             CommandHandler(["show_config", "show_conf"], self._show_config),
             CommandHandler(["stopbuy", "stopentry", "pause"], self._pause),
             CommandHandler("whitelist", self._whitelist),
+            CommandHandler("reason", self._reason),
             CommandHandler("blacklist", self._blacklist),
             CommandHandler(["blacklist_delete", "bl_delete"], self._blacklist_delete),
             CommandHandler("logs", self._logs),
@@ -1939,6 +1940,7 @@ class Telegram(RPCHandler):
             "*/cancel_open_order <trade_id>:* `해당 거래에 걸린 미체결 주문 즉시 취소`\n"
             "*/coo <trade_id>|all:* `/cancel_open_order 의 단축 명령어`\n"
             "*/whitelist [sorted] [baseonly]:* `현재 감시 대상 화이트리스트 코인 목록 조회`\n"
+            "*/reason:* `포지션 미진입 상세 사유(만족/미달 조건) 분석 보고`\n"
             "*/blacklist [pair]:* `현재 진입 금지 블랙리스트 코인 목록 조회 또는 특정 코인 블랙리스트 추가` \n"
             "*/blacklist_delete [pairs]| /bl_delete [pairs]:* "
             "`블랙리스트에서 특정 코인 제외. 설정 파일 재로드 시 초기화됩니다.` \n"
@@ -2276,3 +2278,122 @@ class Telegram(RPCHandler):
             )
         except TelegramError as telegram_err:
             logger.warning("TelegramError: %s! Giving up on that message.", telegram_err.message)
+
+
+    @authorized_only
+    async def _reason(self, update: Update, context: CallbackContext) -> None:
+        from freqtrade.persistence import Trade
+        import pandas as pd
+        
+        open_trades = Trade.get_open_trades()
+        open_pairs = {t.pair: t for t in open_trades}
+        
+        whitelist = self._rpc._freqtrade.active_pair_whitelist
+        timeframe = self._config.get('timeframe', '4h')
+        dp = self._rpc._freqtrade.dataprovider
+        
+        pair_params = {
+            'BTC/USDT:USDT': {
+                'adx_long': 20, 'adx_short': 28, 'rsi_long': 43, 'rsi_short': 40,
+                'prediction_threshold': 0.012, 'prediction_short_threshold': 0.005,
+                'ema_filter': 'ema100'
+            },
+            'ETH/USDT:USDT': {
+                'adx_long': 20, 'adx_short': 22, 'rsi_long': 42, 'rsi_short': 45,
+                'prediction_threshold': 0.008, 'prediction_short_threshold': 0.006,
+                'ema_filter': 'ema150'
+            }
+        }
+        
+        message_lines = ["🤖 *코인별 포지션 진입 대기 사유* 🤖\n"]
+        
+        for pair in whitelist:
+            if pair in open_pairs:
+                trade = open_pairs[pair]
+                side_str = "숏" if trade.is_short else "롱"
+                message_lines.append(f"🟢 *{pair}*: *포지션 진입 중* ({side_str}, 수익률: {trade.calc_profit_ratio():.2%})\n")
+                continue
+                
+            try:
+                df, _ = dp.get_analyzed_dataframe(pair, timeframe)
+            except Exception:
+                df = None
+                
+            if df is None or df.empty:
+                message_lines.append(f"🟡 *{pair}*: 데이터를 불러올 수 없습니다.\n")
+                continue
+                
+            row = df.iloc[-1]
+            params = pair_params.get(pair, pair_params['BTC/USDT:USDT'])
+            
+            do_predict = row.get('do_predict', 0)
+            di_ratio = row.get('DI_ratio', 0.0)
+            rsi = row.get('rsi', 0.0)
+            adx = row.get('adx', 0.0)
+            close = row.get('close', 0.0)
+            ema200 = row.get('ema200', 0.0)
+            fast_ema = row.get('fastEMA', 0.0)
+            slow_ema = row.get('slowEMA', 0.0)
+            target_roi = row.get('&-target_roi', 0.0)
+            macdhist = row.get('macdhist', 0.0)
+            
+            ema_col = params['ema_filter']
+            ema_filter_val = row.get(ema_col, 0.0)
+            
+            long_th = params['prediction_threshold']
+            if pair == 'ETH/USDT:USDT' and close < ema200:
+                long_th = 0.010
+                
+            long_conds = {
+                "AI 예측유효 (do_predict==1)": (do_predict == 1, f"현재: {int(do_predict)}"),
+                "시장왜곡도 (DI_ratio < 0.5)": (di_ratio < 0.5, f"현재: {di_ratio:.3f}"),
+                "상승예측 (target_roi > 기준)": (target_roi > long_th, f"현재: {target_roi:.4%}, 기준: >{long_th:.3%}"),
+                "강도지수 (rsi > 기준)": (rsi > params['rsi_long'], f"현재: {rsi:.1f}, 기준: >{params['rsi_long']}"),
+                "추세강도 (adx > 기준)": (adx > params['adx_long'], f"현재: {adx:.1f}, 기준: >{params['adx_long']}"),
+                "추세필터 (TEMA > EMA200)": (row.get('tema', 0.0) > ema200, f"TEMA: {row.get('tema',0.0):.1f}, EMA200: {ema200:.1f}")
+            }
+            
+            short_conds = {
+                "AI 예측유효 (do_predict==1)": (do_predict == 1, f"현재: {int(do_predict)}"),
+                "시장왜곡도 (DI_ratio < 0.5)": (di_ratio < 0.5, f"현재: {di_ratio:.3f}"),
+                "하락예측 (target_roi < 기준)": (target_roi < -params['prediction_short_threshold'], f"현재: {target_roi:.4%}, 기준: <{-params['prediction_short_threshold']:.3%}"),
+                "강도지수 (rsi < 기준)": (rsi < params['rsi_short'], f"현재: {rsi:.1f}, 기준: <{params['rsi_short']}"),
+                "추세강도 (adx > 기준)": (adx > params['adx_short'], f"현재: {adx:.1f}, 기준: >{params['adx_short']}"),
+                "이평정렬 (fastEMA < slowEMA)": (fast_ema < slow_ema, f"fast: {fast_ema:.1f}, slow: {slow_ema:.1f}"),
+                "하락필터 (close < 이평)": (close < ema_filter_val, f"종가: {close:.1f}, 이평: {ema_filter_val:.1f}"),
+                "MACD히스토그램 (< 0)": (macdhist < 0, f"현재: {macdhist:.2f}")
+            }
+            
+            long_passes = [f"✅ {k} ({v[1]})" for k, v in long_conds.items() if v[0]]
+            long_fails = [f"❌ {k} ({v[1]})" for k, v in long_conds.items() if not v[0]]
+            
+            short_passes = [f"✅ {k} ({v[1]})" for k, v in short_conds.items() if v[0]]
+            short_fails = [f"❌ {k} ({v[1]})" for k, v in short_conds.items() if not v[0]]
+            
+            pair_lines = [f"⚪️ *{pair}* 미진입 상세 원인:"]
+            
+            # 롱 조건 구성
+            pair_lines.append("  📥 *롱(Long) 조건 검토*:")
+            if not long_fails:
+                pair_lines.append("    *롱(Long) 진입 대기 완료 (타 조건 대기 중)*")
+            else:
+                if long_passes:
+                    pair_lines.append("    [만족한 조건]")
+                    pair_lines.extend([f"    {pass_item}" for pass_item in long_passes])
+                pair_lines.append("    [미달한 조건]")
+                pair_lines.extend([f"    {fail}" for fail in long_fails])
+                
+            # 숏 조건 구성
+            pair_lines.append("  📤 *숏(Short) 조건 검토*:")
+            if not short_fails:
+                pair_lines.append("    *숏(Short) 진입 대기 완료 (타 조건 대기 중)*")
+            else:
+                if short_passes:
+                    pair_lines.append("    [만족한 조건]")
+                    pair_lines.extend([f"    {pass_item}" for pass_item in short_passes])
+                pair_lines.append("    [미달한 조건]")
+                pair_lines.extend([f"    {fail}" for fail in short_fails])
+                
+            message_lines.append("\n".join(pair_lines) + "\n")
+            
+        await self._send_msg("\n".join(message_lines))

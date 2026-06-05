@@ -2331,7 +2331,7 @@ class Telegram(RPCHandler):
             rsi = row.get('rsi', 0.0)
             adx = row.get('adx', 0.0)
             close = row.get('close', 0.0)
-            ema50 = row.get('ema50', 0.0)
+            ema200 = row.get('ema200', 0.0)
             fast_ema = row.get('fastEMA', 0.0)
             slow_ema = row.get('slowEMA', 0.0)
             target_roi = row.get('&-target_roi', 0.0)
@@ -2341,7 +2341,7 @@ class Telegram(RPCHandler):
             ema_filter_val = row.get(ema_col, 0.0)
             
             long_th = params['prediction_threshold']
-            if pair == 'ETH/USDT:USDT' and close < ema50:
+            if pair == 'ETH/USDT:USDT' and close < ema200:
                 long_th = 0.010
                 
             long_conds = {
@@ -2350,7 +2350,7 @@ class Telegram(RPCHandler):
                 "상승예측 (target_roi > 기준)": (target_roi > long_th, f"현재: {target_roi:.4%}, 기준: >{long_th:.3%}"),
                 "강도지수 (rsi > 기준)": (rsi > params['rsi_long'], f"현재: {rsi:.1f}, 기준: >{params['rsi_long']}"),
                 "추세강도 (adx > 기준)": (adx > params['adx_long'], f"현재: {adx:.1f}, 기준: >{params['adx_long']}"),
-                "추세필터 (TEMA > EMA50)": (row.get('tema', 0.0) > ema50, f"TEMA: {row.get('tema',0.0):.1f}, EMA50: {ema50:.1f}")
+                "추세필터 (TEMA > EMA200)": (row.get('tema', 0.0) > ema200, f"TEMA: {row.get('tema',0.0):.1f}, EMA200: {ema200:.1f}")
             }
             
             short_conds = {

@@ -1,0 +1,24 @@
+{
+    "BTC/USDT:USDT": {
+        "adx_long": 20,
+        "adx_short": 32,
+        "rsi_long": 48,
+        "rsi_short": 38,
+        "prediction_threshold": 0.0077,
+        "prediction_short_threshold": 0.0043,
+        "leverage_long": 14,
+        "leverage_short": 6,
+        "ema_filter": "ema100"
+    },
+    "ETH/USDT:USDT": {
+        "adx_long": 15,
+        "adx_short": 21,
+        "rsi_long": 45,
+        "rsi_short": 33,
+        "prediction_threshold": 0.0102,
+        "prediction_short_threshold": 0.0159,
+        "leverage_long": 12,
+        "leverage_short": 9,
+        "ema_filter": "ema150"
+    }
+}

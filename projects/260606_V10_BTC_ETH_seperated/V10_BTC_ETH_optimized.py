@@ -60,7 +60,7 @@ class V10_BTC_ETH_optimized(IStrategy):
     startup_candle_count: int = 200
     
     # FreqAI 愿???ㅼ젙
-    process_only_new_candles = True
+    process_only_new_candles = False
     use_exit_signal = True
 
     # ?섏씠?쇱샃?몄슜 怨듯넻 ?뺤쓽 (諛깊뀒?ㅽ듃 ???숈쟻 遺꾧린 濡쒖쭅???덉쑝誘濡??뷀뤃???뚮젅?댁뒪?????븷)

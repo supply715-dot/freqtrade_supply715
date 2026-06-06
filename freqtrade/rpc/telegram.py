@@ -142,6 +142,21 @@ def authorized_only(command_handler: Callable[..., Coroutine[Any, Any, None]]):
 class Telegram(RPCHandler):
     """This class handles all telegram communication"""
 
+    def _query_peer_api(self, peer: dict, endpoint: str, params: dict = None) -> dict | list | None:
+        import requests
+        from requests.auth import HTTPBasicAuth
+        try:
+            url = f"{peer['url']}/api/v1/{endpoint}"
+            auth = HTTPBasicAuth(peer['username'], peer['password'])
+            response = requests.get(url, auth=auth, params=params, timeout=5)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(f"Error querying peer API {url}: {response.status_code}")
+        except Exception as e:
+            logger.error(f"Failed to query peer API {endpoint} on {peer.get('url')}: {e}")
+        return None
+
     def __init__(self, rpc: RPC, config: Config) -> None:
         """
         Init the Telegram call, and init the super class RPCHandler
@@ -360,7 +375,8 @@ class Telegram(RPCHandler):
                     logger.warning("Telegram init failed.")
                     return
                 await asyncio.sleep(2)
-        if self._app.updater:
+        listen_enabled = self._config.get("telegram", {}).get("listen", True)
+        if self._app.updater and listen_enabled:
             await self._app.updater.start_polling(
                 bootstrap_retries=10,
                 timeout=20,
@@ -370,6 +386,10 @@ class Telegram(RPCHandler):
                 await asyncio.sleep(10)
                 if not self._app.updater.running:
                     break
+        else:
+            logger.info("Telegram polling is disabled (listen=False). Only sending notifications.")
+            while True:
+                await asyncio.sleep(10)
 
     async def _cleanup_telegram(self) -> None:
         if self._app.updater:
@@ -762,6 +782,18 @@ class Telegram(RPCHandler):
             trade_ids = [int(i) for i in context.args if i.isnumeric()]
 
         results = self._rpc._rpc_trade_status(trade_ids=trade_ids)
+        for peer in self._config.get("telegram", {}).get("peers", []):
+            peer_results = self._query_peer_api(peer, "status")
+            if peer_results:
+                if trade_ids:
+                    peer_results = [r for r in peer_results if r["trade_id"] in trade_ids]
+                import dateutil.parser
+                for r in peer_results:
+                    if isinstance(r.get("open_date"), str):
+                        r["open_date"] = dateutil.parser.parse(r["open_date"])
+                    if isinstance(r.get("close_date"), str):
+                        r["close_date"] = dateutil.parser.parse(r["close_date"])
+                results.extend(peer_results)
         position_adjust = self._config.get("position_adjustment_enable", False)
         max_entries = self._config.get("max_entry_position_adjustment", -1)
         for r in results:
@@ -956,6 +988,24 @@ class Telegram(RPCHandler):
         except (TypeError, ValueError, IndexError):
             timescale = val.default
         stats = self._rpc._rpc_timeunit_profit(timescale, stake_cur, fiat_disp_cur, unit)
+        endpoint_map = {"days": "daily", "weeks": "weekly", "months": "monthly"}
+        endpoint = endpoint_map.get(unit, "daily")
+        for peer in self._config.get("telegram", {}).get("peers", []):
+            peer_stats = self._query_peer_api(peer, endpoint, params={"timespan": timescale})
+            if peer_stats and "data" in peer_stats:
+                merged_data = {d["date"]: d for d in stats["data"]}
+                for p_d in peer_stats["data"]:
+                    date_key = p_d["date"]
+                    if date_key in merged_data:
+                        merged_data[date_key]["abs_profit"] += p_d.get("abs_profit", 0.0)
+                        merged_data[date_key]["fiat_value"] += p_d.get("fiat_value", 0.0)
+                        merged_data[date_key]["trade_count"] += p_d.get("trade_count", 0)
+                        merged_data[date_key]["starting_balance"] += p_d.get("starting_balance", 0.0)
+                        if merged_data[date_key]["starting_balance"] > 0:
+                            merged_data[date_key]["rel_profit"] = merged_data[date_key]["abs_profit"] / merged_data[date_key]["starting_balance"]
+                    else:
+                        stats["data"].append(p_d)
+                stats["data"] = sorted(stats["data"], key=lambda x: x["date"], reverse=True)
         stats_tab = tabulate(
             [
                 [
@@ -1167,6 +1217,29 @@ class Telegram(RPCHandler):
             stats_kwargs["direction"] = direction
 
         stats = self._rpc._rpc_trade_statistics(**stats_kwargs)
+        for peer in self._config.get("telegram", {}).get("peers", []):
+            peer_stats = self._query_peer_api(peer, "profit", params=stats_kwargs)
+            if peer_stats:
+                stats["profit_closed_coin"] += peer_stats.get("profit_closed_coin", 0.0)
+                stats["profit_closed_percent_sum"] += peer_stats.get("profit_closed_percent_sum", 0.0)
+                stats["profit_closed_ratio_sum"] += peer_stats.get("profit_closed_ratio_sum", 0.0)
+                stats["profit_closed_fiat"] += peer_stats.get("profit_closed_fiat", 0.0)
+                stats["profit_all_coin"] += peer_stats.get("profit_all_coin", 0.0)
+                stats["profit_all_percent_sum"] += peer_stats.get("profit_all_percent_sum", 0.0)
+                stats["profit_all_ratio_sum"] += peer_stats.get("profit_all_ratio_sum", 0.0)
+                stats["profit_all_fiat"] += peer_stats.get("profit_all_fiat", 0.0)
+                stats["trade_count"] += peer_stats.get("trade_count", 0)
+                stats["closed_trade_count"] += peer_stats.get("closed_trade_count", 0)
+                stats["winning_trades"] += peer_stats.get("winning_trades", 0)
+                stats["losing_trades"] += peer_stats.get("losing_trades", 0)
+                stats["trading_volume"] += peer_stats.get("trading_volume", 0.0)
+        if stats.get("closed_trade_count", 0) > 0:
+            stats["profit_closed_percent_mean"] = stats["profit_closed_percent_sum"] / stats["closed_trade_count"]
+            stats["profit_closed_ratio_mean"] = stats["profit_closed_ratio_sum"] / stats["closed_trade_count"]
+            stats["winrate"] = stats["winning_trades"] / stats["closed_trade_count"]
+        if stats.get("trade_count", 0) > 0:
+            stats["profit_all_percent_mean"] = stats["profit_all_percent_sum"] / stats["trade_count"]
+            stats["profit_all_ratio_mean"] = stats["profit_all_ratio_sum"] / stats["trade_count"]
         markdown_msg = self._format_profit_message(
             stats, stake_cur, fiat_disp_cur, timescale, direction
         )
@@ -1266,7 +1339,21 @@ class Telegram(RPCHandler):
         result = self._rpc._rpc_balance(
             self._config["stake_currency"], self._config.get("fiat_display_currency", "")
         )
-
+        for peer in self._config.get("telegram", {}).get("peers", []):
+            peer_result = self._query_peer_api(peer, "balance")
+            if peer_result:
+                result["currencies"].extend(peer_result.get("currencies", []))
+                result["starting_capital"] += peer_result.get("starting_capital", 0.0)
+                result["starting_capital_fiat"] += peer_result.get("starting_capital_fiat", 0.0)
+                result["total"] += peer_result.get("total", 0.0)
+                result["total_bot"] += peer_result.get("total_bot", 0.0)
+                result["value"] += peer_result.get("value", 0.0)
+                result["value_bot"] += peer_result.get("value_bot", 0.0)
+                result["trade_count"] += peer_result.get("trade_count", 0)
+        if result["starting_capital"] > 0:
+            result["starting_capital_ratio"] = (result["total"] / result["starting_capital"]) - 1.0
+        if result["starting_capital_fiat"] > 0:
+            result["starting_capital_fiat_ratio"] = (result["value"] / result["starting_capital_fiat"]) - 1.0
         balance_dust_level = self._config["telegram"].get("balance_dust_level", 0.0)
         if not balance_dust_level:
             balance_dust_level = DUST_PER_COIN.get(self._config["stake_currency"], 1.0)
@@ -2286,9 +2373,27 @@ class Telegram(RPCHandler):
         import pandas as pd
         
         open_trades = Trade.get_open_trades()
-        open_pairs = {t.pair: t for t in open_trades}
+        open_pairs = {t.pair: {"is_short": t.is_short, "profit_ratio": t.calc_profit_ratio()} for t in open_trades}
         
-        whitelist = self._rpc._freqtrade.active_pair_whitelist
+        # 피어 봇들의 open_trades 병합
+        for peer in self._config.get("telegram", {}).get("peers", []):
+            peer_status = self._query_peer_api(peer, "status")
+            if peer_status:
+                for trade in peer_status:
+                    pair_name = trade["pair"]
+                    open_pairs[pair_name] = {
+                        "is_short": trade.get("is_short", trade.get("direction") == "short"),
+                        "profit_ratio": trade.get("profit_ratio", 0.0)
+                    }
+        
+        whitelist = list(self._rpc._freqtrade.active_pair_whitelist)
+        # 피어 봇들의 whitelist 병합
+        for peer in self._config.get("telegram", {}).get("peers", []):
+            peer_wl = self._query_peer_api(peer, "whitelist")
+            if peer_wl and "whitelist" in peer_wl:
+                whitelist.extend(peer_wl["whitelist"])
+        whitelist = list(dict.fromkeys(whitelist))
+
         timeframe = self._config.get('timeframe', '4h')
         dp = self._rpc._freqtrade.dataprovider
         
@@ -2309,15 +2414,32 @@ class Telegram(RPCHandler):
         
         for pair in whitelist:
             if pair in open_pairs:
-                trade = open_pairs[pair]
-                side_str = "숏" if trade.is_short else "롱"
-                message_lines.append(f"🟢 *{pair}*: *포지션 진입 중* ({side_str}, 수익률: {trade.calc_profit_ratio():.2%})\n")
+                trade_info = open_pairs[pair]
+                side_str = "숏" if trade_info["is_short"] else "롱"
+                message_lines.append(f"🟢 *{pair}*: *포지션 진입 중* ({side_str}, 수익률: {trade_info['profit_ratio']:.2%})\n")
                 continue
                 
-            try:
-                df, _ = dp.get_analyzed_dataframe(pair, timeframe)
-            except Exception:
-                df = None
+            df = None
+            is_peer_pair = False
+            for peer in self._config.get("telegram", {}).get("peers", []):
+                peer_wl = self._query_peer_api(peer, "whitelist")
+                if peer_wl and pair in peer_wl.get("whitelist", []):
+                    candles_json = self._query_peer_api(
+                        peer, "pair_candles", 
+                        params={"pair": pair, "timeframe": timeframe, "limit": 1}
+                    )
+                    if candles_json and "data" in candles_json:
+                        columns = candles_json["columns"]
+                        data = candles_json["data"]
+                        df = pd.DataFrame(data, columns=columns)
+                        is_peer_pair = True
+                        break
+            
+            if not is_peer_pair:
+                try:
+                    df, _ = dp.get_analyzed_dataframe(pair, timeframe)
+                except Exception:
+                    df = None
                 
             if df is None or df.empty:
                 message_lines.append(f"🟡 *{pair}*: 데이터를 불러올 수 없습니다.\n")

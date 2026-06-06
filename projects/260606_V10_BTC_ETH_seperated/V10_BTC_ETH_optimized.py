@@ -60,7 +60,7 @@ class V10_BTC_ETH_optimized(IStrategy):
     startup_candle_count: int = 200
     
     # FreqAI 愿???ㅼ젙
-    process_only_new_candles = False
+    process_only_new_candles = True
     use_exit_signal = True
 
     # ?섏씠?쇱샃?몄슜 怨듯넻 ?뺤쓽 (諛깊뀒?ㅽ듃 ???숈쟻 遺꾧린 濡쒖쭅???덉쑝誘濡??뷀뤃???뚮젅?댁뒪?????븷)
@@ -196,6 +196,17 @@ class V10_BTC_ETH_optimized(IStrategy):
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         # FreqAI ?덉륫 ?섑뻾
         dataframe = self.freqai.start(dataframe, metadata, self)
+        
+        # [do_predict=0 Debug Log]
+        if not dataframe.empty:
+            last_row = dataframe.iloc[-1]
+            if last_row.get('do_predict', 0) == 0:
+                logger.warning(f"!!! [do_predict=0 Debug] {metadata['pair']} has do_predict == 0 at date={last_row.get('date')}")
+                nan_cols = [col for col in dataframe.columns if pd.isna(last_row[col])]
+                logger.warning(f"!!! [do_predict=0 Debug] NaN columns in last row: {nan_cols}")
+                logger.warning(f"!!! [do_predict=0 Debug] DI_ratio: {last_row.get('DI_ratio', 'N/A')}, DI_values: {last_row.get('DI_values', 'N/A')}")
+            else:
+                logger.info(f"!!! [do_predict=0 Debug] {metadata['pair']} is normal. do_predict=1, DI_ratio={last_row.get('DI_ratio', 'N/A')}")
         
         # 湲곕낯 吏??
         dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)

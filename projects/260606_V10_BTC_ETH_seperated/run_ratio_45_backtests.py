@@ -6,7 +6,7 @@ import pandas as pd
 import subprocess
 import copy
 
-# 경로 정의
+# 경로 ?�의
 WORKSPACE_DIR = r"c:\Users\7supp\.gemini\antigravity\260509_freqtrade"
 RESULTS_DIR = os.path.join(WORKSPACE_DIR, "user_data", "backtest_results")
 OUTPUT_DIR = r"C:\Users\7supp\.gemini\antigravity\brain\2f364b73-3d77-4327-8238-0b87f4d0b8e3"
@@ -15,19 +15,19 @@ CONFIG_BTC_PATH = os.path.join(WORKSPACE_DIR, "config_bt_btc.json")
 CONFIG_ETH_PATH = os.path.join(WORKSPACE_DIR, "config_bt_eth.json")
 
 def backup_and_modify_configs():
-    # 백업 생성
+    # 백업 ?�성
     shutil.copy2(CONFIG_BTC_PATH, CONFIG_BTC_PATH + ".bak")
     shutil.copy2(CONFIG_ETH_PATH, CONFIG_ETH_PATH + ".bak")
     print("Configs backed up.")
 
-    # BTC 수정
+    # BTC ?�정
     with open(CONFIG_BTC_PATH, "r", encoding="utf-8") as f:
         btc_cfg = json.load(f)
     btc_cfg["tradable_balance_ratio"] = 0.45
     with open(CONFIG_BTC_PATH, "w", encoding="utf-8") as f:
         json.dump(btc_cfg, f, indent=4)
 
-    # ETH 수정
+    # ETH ?�정
     with open(CONFIG_ETH_PATH, "r", encoding="utf-8") as f:
         eth_cfg = json.load(f)
     eth_cfg["tradable_balance_ratio"] = 0.45
@@ -46,7 +46,7 @@ def run_backtest(config_file, freqai_config):
     cmd = [
         r"C:\python_3_13_3_win64\Scripts\freqtrade.exe",
         "backtesting",
-        "--strategy", "V8_BTC_ETH_optimized",
+        "--strategy", "V10_BTC_ETH_optimized",
         "--config", config_file,
         "--config", freqai_config,
         "--timerange", "20220601-20260601",
@@ -61,7 +61,7 @@ def run_backtest(config_file, freqai_config):
     print(f"Successfully finished backtest for {config_file}.")
 
 def get_latest_results(n=2):
-    # RESULTS_DIR 에서 최근 파일 n개 찾기
+    # RESULTS_DIR ?�서 최근 ?�일 n�?찾기
     files = [os.path.join(RESULTS_DIR, f) for f in os.listdir(RESULTS_DIR) if f.endswith(".zip")]
     files.sort(key=os.path.getmtime, reverse=True)
     return files[:n]
@@ -86,8 +86,8 @@ def parse_zip(path):
     return pd.DataFrame(), {}
 
 def simulate_portfolio(btc_trades, eth_trades):
-    # 포트폴리오 통합 성과 시뮬레이션 (10,000 USDT 기준 복리)
-    # 두 트레이드 병합 및 시간순 정렬
+    # ?�트?�리???�합 ?�과 ?��??�이??(10,000 USDT 기�? 복리)
+    # ???�레?�드 병합 �??�간???�렬
     btc_df = btc_trades.copy()
     btc_df['coin'] = 'BTC'
     eth_df = eth_trades.copy()
@@ -95,8 +95,7 @@ def simulate_portfolio(btc_trades, eth_trades):
     
     merged_trades = pd.concat([btc_df, eth_df], ignore_index=True)
     
-    # 시간 순 정렬을 위해 이벤트 화
-    events = []
+    # ?�간 ???�렬???�해 ?�벤????    events = []
     for idx, row in merged_trades.iterrows():
         close_time = row['close_date']
         if row['open_date'] == row['close_date']:
@@ -117,7 +116,7 @@ def simulate_portfolio(btc_trades, eth_trades):
             'profit_ratio': row['profit_ratio']
         })
         
-    # 시간 순 정렬 (시간이 같은 경우 close 이벤트를 먼저 처리하여 잔고 확보)
+    # ?�간 ???�렬 (?�간??같�? 경우 close ?�벤?��? 먼�? 처리?�여 ?�고 ?�보)
     events.sort(key=lambda x: (x['time'], 0 if x['type'] == 'close' else 1))
     
     initial_balance = 10000.0
@@ -133,7 +132,7 @@ def simulate_portfolio(btc_trades, eth_trades):
         t_id = ev['trade_id']
         
         if ev['type'] == 'open':
-            # 지갑 잔고의 45%를 투자금으로 설정
+            # 지�??�고??45%�??�자금으�??�정
             stake = balance * 0.45
             balance -= stake
             active_positions[t_id] = stake
@@ -143,7 +142,7 @@ def simulate_portfolio(btc_trades, eth_trades):
                 pnl = stake * ev['profit_ratio']
                 balance += (stake + pnl)
                 
-        # 리스크 지표 업데이트
+        # 리스??지???�데?�트
         if balance > peak:
             peak = balance
         drawdown = (peak - balance) / peak
@@ -159,7 +158,7 @@ def main():
     try:
         backup_and_modify_configs()
         
-        # 백테스트 기동
+        # 백테?�트 기동
         print("Starting BTC 72h ratio 0.45 backtest...")
         run_backtest("config_bt_btc.json", "config_freqai_bt_btc_72h.json")
         
@@ -169,7 +168,7 @@ def main():
     finally:
         restore_configs()
         
-    # 결과 파싱
+    # 결과 ?�싱
     latest_files = get_latest_results(2)
     print(f"Latest backtest result files found: {latest_files}")
     
@@ -189,11 +188,10 @@ def main():
         print("Error: Could not find valid BTC and ETH trade records.")
         return
         
-    # 포트폴리오 시뮬레이션
-    print("Simulating unified portfolio performance...")
+    # ?�트?�리???��??�이??    print("Simulating unified portfolio performance...")
     port_profit_pct, port_mdd, port_profit_abs = simulate_portfolio(btc_df, eth_df)
     
-    # 결과 요약 JSON 파일 쓰기
+    # 결과 ?�약 JSON ?�일 ?�기
     results_data = {
         "ratio_45": {
             "btc": {

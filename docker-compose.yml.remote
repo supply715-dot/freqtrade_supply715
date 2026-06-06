@@ -1,0 +1,19 @@
+---
+services:
+  freqtrade:
+    image: freqtradeorg/freqtrade:stable_freqai
+    restart: unless-stopped
+    container_name: freqtrade
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+      - "./freqtrade/rpc/rpc_manager.py:/freqtrade/freqtrade/rpc/rpc_manager.py"
+      - "./freqtrade/rpc/telegram.py:/freqtrade/freqtrade/rpc/telegram.py"
+    ports:
+      - "8080:8080"
+    command: >
+      trade
+      --strategy V8_BTC_ETH_optimized
+      --config /freqtrade/user_data/config.json
+      --config /freqtrade/user_data/secrets.json
+      --config /freqtrade/user_data/config_freqai.json
+      --freqaimodel LightGBMRegressor

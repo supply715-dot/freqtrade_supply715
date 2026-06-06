@@ -1,0 +1,42 @@
+version: '3'
+
+services:
+  freqtrade_btc:
+    image: freqtradeorg/freqtrade:stable_freqai
+    container_name: freqtrade_live_btc
+    volumes:
+      - "../../user_data:/freqtrade/user_data"
+      - "/home/ubuntu/freqtrade/freqtrade/rpc/rpc_manager.py:/freqtrade/freqtrade/rpc/rpc_manager.py"
+      - "/home/ubuntu/freqtrade/freqtrade/rpc/telegram.py:/freqtrade/freqtrade/rpc/telegram.py"
+      - "./config_live_btc.json:/freqtrade/config.json"
+      - "./config_freqai_bt_btc_72h.json:/freqtrade/config_freqai.json"
+      - "./V10_BTC_ETH_optimized_btc.json:/freqtrade/user_data/strategies/V10_BTC_ETH_optimized.json"
+    ports:
+      - "8080:8080"
+    command: >
+      trade 
+      --strategy V10_BTC_ETH_optimized 
+      --config /freqtrade/config.json 
+      --config /freqtrade/config_freqai.json
+      --freqaimodel LightGBMRegressor
+    restart: always
+
+  freqtrade_eth:
+    image: freqtradeorg/freqtrade:stable_freqai
+    container_name: freqtrade_live_eth
+    volumes:
+      - "../../user_data:/freqtrade/user_data"
+      - "/home/ubuntu/freqtrade/freqtrade/rpc/rpc_manager.py:/freqtrade/freqtrade/rpc/rpc_manager.py"
+      - "/home/ubuntu/freqtrade/freqtrade/rpc/telegram.py:/freqtrade/freqtrade/rpc/telegram.py"
+      - "./config_live_eth.json:/freqtrade/config.json"
+      - "./config_freqai_bt_eth_24h.json:/freqtrade/config_freqai.json"
+      - "./V10_BTC_ETH_optimized_eth.json:/freqtrade/user_data/strategies/V10_BTC_ETH_optimized.json"
+    ports:
+      - "8081:8081"
+    command: >
+      trade 
+      --strategy V10_BTC_ETH_optimized 
+      --config /freqtrade/config.json 
+      --config /freqtrade/config_freqai.json
+      --freqaimodel LightGBMRegressor
+    restart: always

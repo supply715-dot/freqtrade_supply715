@@ -1,5 +1,5 @@
 {
-    "strategy_name": "V8_BTC_ETH_optimized",
+    "strategy_name": "V10_BTC_ETH_optimized",
     "params": {
         "trailing": {
             "trailing_stop": true,
@@ -8,15 +8,15 @@
             "trailing_only_offset_is_reached": true
         },
         "max_open_trades": {
-            "max_open_trades": 2
+            "max_open_trades": 1
         },
         "buy": {
-            "prediction_threshold": 0.01
+            "prediction_threshold": 0.0102
         },
         "roi": {
-            "0": 0.4,
-            "480": 0.2,
-            "960": 0.1
+            "0": 0.40,
+            "480": 0.20,
+            "960": 0.10
         },
         "stoploss": {
             "stoploss": -0.104

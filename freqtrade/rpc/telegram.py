@@ -1934,7 +1934,7 @@ class Telegram(RPCHandler):
             "*/stopentry:* `신규 진입 영구 중단 (기존 포지션은 계속 정상 관리)` \n"
             "*/forceexit <trade_id>|all:* `지정한 거래 ID 또는 전체 보유 포지션 즉시 시장가 청산 및 강제 종료`\n"
             "*/fx <trade_id>|all:* `/forceexit 의 단축 명령어`\n"
-            f"{force_enter_text if self._config.get('force_entry_enable', False) else ''}"
+            f"{force_enter_text}"
             "*/delete <trade_id>:* `데이터베이스에서 해당 거래 ID 기록을 영구 삭제 (보유 자산에는 영향 없음)`\n"
             "*/reload_trade <trade_id>:* `거래소 주문 내역으로부터 해당 거래 기록 강제 동기화 및 갱신`\n"
             "*/cancel_open_order <trade_id>:* `해당 거래에 걸린 미체결 주문 즉시 취소`\n"
@@ -2373,7 +2373,7 @@ class Telegram(RPCHandler):
             pair_lines = [f"⚪️ *{pair}* 미진입 상세 원인:"]
             
             # 롱 조건 구성
-            pair_lines.append("  📥 *롱(Long) 조건 검토*:")
+            pair_lines.append("  📥 *롱 조건 검토* (Long):")
             if not long_fails:
                 pair_lines.append("    *롱(Long) 진입 대기 완료 (타 조건 대기 중)*")
             else:
@@ -2384,7 +2384,7 @@ class Telegram(RPCHandler):
                 pair_lines.extend([f"    {fail}" for fail in long_fails])
                 
             # 숏 조건 구성
-            pair_lines.append("  📤 *숏(Short) 조건 검토*:")
+            pair_lines.append("  📤 *숏 조건 검토* (Short):")
             if not short_fails:
                 pair_lines.append("    *숏(Short) 진입 대기 완료 (타 조건 대기 중)*")
             else:

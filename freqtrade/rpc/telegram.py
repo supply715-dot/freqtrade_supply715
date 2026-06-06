@@ -142,19 +142,22 @@ def authorized_only(command_handler: Callable[..., Coroutine[Any, Any, None]]):
 class Telegram(RPCHandler):
     """This class handles all telegram communication"""
 
-    def _query_peer_api(self, peer: dict, endpoint: str, params: dict = None) -> dict | list | None:
+    def _query_peer_api(self, peer: dict, endpoint: str, params: dict = None, method: str = "GET", payload: dict = None) -> dict | list | None:
         import requests
         from requests.auth import HTTPBasicAuth
         try:
             url = f"{peer['url']}/api/v1/{endpoint}"
             auth = HTTPBasicAuth(peer['username'], peer['password'])
-            response = requests.get(url, auth=auth, params=params, timeout=5)
+            if method.upper() == "POST":
+                response = requests.post(url, auth=auth, json=payload, timeout=5)
+            else:
+                response = requests.get(url, auth=auth, params=params, timeout=5)
             if response.status_code == 200:
                 return response.json()
             else:
-                logger.error(f"Error querying peer API {url}: {response.status_code}")
+                logger.error(f"Error querying peer API {url} via {method}: {response.status_code}")
         except Exception as e:
-            logger.error(f"Failed to query peer API {endpoint} on {peer.get('url')}: {e}")
+            logger.error(f"Failed to query peer API {endpoint} via {method} on {peer.get('url')}: {e}")
         return None
 
     def __init__(self, rpc: RPC, config: Config) -> None:
@@ -1510,16 +1513,30 @@ class Telegram(RPCHandler):
             await self._force_exit_action(trade_id)
         else:
             fiat_currency = self._config.get("fiat_display_currency", "")
+            trades = []
             try:
                 statlist, _, _, _ = self._rpc._rpc_status_table(
                     self._config["stake_currency"], fiat_currency
                 )
+                for trade in statlist:
+                    trades.append((trade[0], f"{trade[0]} {trade[1]} {trade[2]} {trade[3]}"))
             except RPCException:
+                pass
+
+            # Merge peer status for trade choices
+            for peer in self._config.get("telegram", {}).get("peers", []):
+                peer_status = self._query_peer_api(peer, "status")
+                if peer_status:
+                    for t in peer_status:
+                        # Formatting identical to statlist for consistency: [id, pair, profit%, status/info]
+                        trade_id = str(t["trade_id"])
+                        pair = t["pair"]
+                        profit = f"{t['profit_ratio']:.2%}"
+                        trades.append((trade_id, f"Peer: {trade_id} {pair} {profit}"))
+
+            if not trades:
                 await self._send_msg(msg="No open trade found.")
                 return
-            trades = []
-            for trade in statlist:
-                trades.append((trade[0], f"{trade[0]} {trade[1]} {trade[2]} {trade[3]}"))
 
             trade_buttons = [
                 InlineKeyboardButton(text=trade[1], callback_data=f"force_exit__{trade[0]}")
@@ -1535,6 +1552,32 @@ class Telegram(RPCHandler):
     async def _force_exit_action(self, trade_id: str):
         if trade_id != "cancel":
             try:
+                # Check if trade_id exists in local open trades
+                from freqtrade.persistence import Trade
+                local_trade = Trade.get_trades(trade_filter=Trade.id == int(trade_id)).first() if trade_id.isdigit() else None
+
+                if not local_trade:
+                    # Search peer bots
+                    target_peer = None
+                    for peer in self._config.get("telegram", {}).get("peers", []):
+                        peer_status = self._query_peer_api(peer, "status")
+                        if peer_status:
+                            if any(str(t["trade_id"]) == str(trade_id) for t in peer_status):
+                                target_peer = peer
+                                break
+
+                    if target_peer:
+                        # Remote forceexit
+                        payload = {"tradeid": trade_id}
+                        res = self._query_peer_api(target_peer, "forceexit", method="POST", payload=payload)
+                        if res and "status" in res:
+                            await self._send_msg(f"Sub Account ({target_peer.get('url')}): {res['status']}")
+                        elif res:
+                            await self._send_msg(f"Sub Account ({target_peer.get('url')}): Trade exited successfully.")
+                        else:
+                            await self._send_msg(f"Failed to exit trade {trade_id} on Sub Account ({target_peer.get('url')})")
+                        return
+
                 loop = asyncio.get_running_loop()
                 # Workaround to avoid nested loops
                 await loop.run_in_executor(None, safe_async_db(self._rpc._rpc_force_exit), trade_id)
@@ -1551,15 +1594,36 @@ class Telegram(RPCHandler):
                     await query.answer()
                     await query.edit_message_text(text="Force exit canceled.")
                     return
+                # Check local and peers
+                from freqtrade.persistence import Trade
                 trade: Trade | None = (
                     Trade.get_trades(trade_filter=Trade.id == int(trade_id)).first()
                     if trade_id.isdigit()
                     else None
                 )
+                
+                # Check if it exists in peers as well if not found locally
+                is_peer_trade = False
+                peer_pair = ""
+                if not trade:
+                    for peer in self._config.get("telegram", {}).get("peers", []):
+                        peer_status = self._query_peer_api(peer, "status")
+                        if peer_status:
+                            matching = [t for t in peer_status if str(t["trade_id"]) == str(trade_id)]
+                            if matching:
+                                is_peer_trade = True
+                                peer_pair = matching[0]["pair"]
+                                break
+
                 await query.answer()
                 if trade:
                     await query.edit_message_text(
                         text=f"Manually exiting Trade #{trade_id}, {trade.pair}"
+                    )
+                    await self._force_exit_action(trade_id)
+                elif is_peer_trade:
+                    await query.edit_message_text(
+                        text=f"Manually exiting Sub Account Trade #{trade_id}, {peer_pair}"
                     )
                     await self._force_exit_action(trade_id)
                 else:
@@ -1568,14 +1632,36 @@ class Telegram(RPCHandler):
     async def _force_enter_action(self, pair, price: float | None, order_side: SignalDirection):
         if pair != "cancel":
             try:
+                # Determine target bot: local or peer
+                target_peer = None
+                for peer in self._config.get("telegram", {}).get("peers", []):
+                    peer_wl = self._query_peer_api(peer, "whitelist")
+                    if peer_wl and pair in peer_wl.get("whitelist", []):
+                        target_peer = peer
+                        break
 
-                @safe_async_db
-                def _force_enter():
-                    self._rpc._rpc_force_entry(pair, price, order_side=order_side)
+                if target_peer:
+                    # Query peer using API POST /api/v1/forceenter
+                    payload = {
+                        "pair": pair,
+                        "side": order_side.value,
+                        "price": price
+                    }
+                    res = self._query_peer_api(target_peer, "forceenter", method="POST", payload=payload)
+                    if res and "status" in res:
+                        await self._send_msg(f"Sub Account ({target_peer.get('url')}): {res['status']}", ParseMode.HTML)
+                    elif res:
+                        await self._send_msg(f"Sub Account ({target_peer.get('url')}): Order entered successfully.", ParseMode.HTML)
+                    else:
+                        await self._send_msg(f"Failed to enter trade on Sub Account ({target_peer.get('url')})", ParseMode.HTML)
+                else:
+                    @safe_async_db
+                    def _force_enter():
+                        self._rpc._rpc_force_entry(pair, price, order_side=order_side)
 
-                loop = asyncio.get_running_loop()
-                # Workaround to avoid nested loops
-                await loop.run_in_executor(None, _force_enter)
+                    loop = asyncio.get_running_loop()
+                    # Workaround to avoid nested loops
+                    await loop.run_in_executor(None, _force_enter)
             except RPCException as e:
                 logger.exception("Forcebuy error!")
                 await self._send_msg(str(e), ParseMode.HTML)
@@ -1619,12 +1705,19 @@ class Telegram(RPCHandler):
             price = float(context.args[1]) if len(context.args) > 1 else None
             await self._force_enter_action(pair, price, order_side)
         else:
-            whitelist = self._rpc._rpc_whitelist()["whitelist"]
+            whitelist = list(self._rpc._rpc_whitelist()["whitelist"])
+            # Merge peer whitelists
+            for peer in self._config.get("telegram", {}).get("peers", []):
+                peer_wl = self._query_peer_api(peer, "whitelist")
+                if peer_wl and "whitelist" in peer_wl:
+                    whitelist.extend(peer_wl["whitelist"])
+            whitelist = sorted(list(dict.fromkeys(whitelist)))
+
             pair_buttons = [
                 InlineKeyboardButton(
                     text=pair, callback_data=f"force_enter__{pair}_||_{order_side}"
                 )
-                for pair in sorted(whitelist)
+                for pair in whitelist
             ]
             buttons_aligned = self._layout_inline_keyboard(pair_buttons)
 
@@ -1860,6 +1953,19 @@ class Telegram(RPCHandler):
         :return: None
         """
         counts = self._rpc._rpc_count()
+        
+        # Merge peer counts
+        for peer in self._config.get("telegram", {}).get("peers", []):
+            peer_counts = self._query_peer_api(peer, "count")
+            if peer_counts:
+                counts["current"] += peer_counts.get("current", 0.0)
+                # If either is -1 (infinite), result is -1, otherwise sum them
+                if counts["max"] == -1 or peer_counts.get("max") == -1:
+                    counts["max"] = -1
+                else:
+                    counts["max"] += peer_counts.get("max", 0.0)
+                counts["total_stake"] += peer_counts.get("total_stake", 0.0)
+                
         message = tabulate(
             {k: [v] for k, v in counts.items()},
             headers=["current", "max", "total stake"],
